@@ -1,14 +1,15 @@
 package com.couch.kotlinx
 
+import com.couch.kotlinx.llvm.*
 import com.couch.toylang.ToylangParser
 import com.couch.toylang.ToylangParserListener
 import org.antlr.v4.kotlinruntime.ParserRuleContext
 import org.antlr.v4.kotlinruntime.tree.ErrorNode
 import org.antlr.v4.kotlinruntime.tree.TerminalNode
+import org.bytedeco.llvm.global.LLVM
 
-class ToylangListener: ToylangParserListener {
+class ToylangListener(private val module: Module): ToylangParserListener {
     private val prettyPrinter = PrettyPrintTree()
-    private val bytecodeSB = StringBuilder()
     override fun enterToylangFile(ctx: ToylangParser.ToylangFileContext) {
         prettyPrinter.append("ROOT{"){
             this.indent()
@@ -52,7 +53,6 @@ class ToylangListener: ToylangParserListener {
                 this.append("Mutable: ${ctx.MUT() ?: "false"}")
             }
         }
-        this.bytecodeSB.append("")
     }
 
     override fun exitLetDeclaration(ctx: ToylangParser.LetDeclarationContext) {

@@ -48,6 +48,7 @@ tasks.register<com.strumenta.antlrkotlin.gradleplugin.AntlrKotlinTask>("generate
     maxHeapSize = "64m"
     packageName = "com.couch.toylang"
 //    arguments = listOf("-no-visitor", "-no-listener")
+    arguments = listOf("-visitor")
     source = project.objects
             .sourceDirectorySet("antlr", "antlr")
             .srcDir("src/main/antlr").apply {

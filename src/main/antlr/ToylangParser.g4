@@ -8,7 +8,7 @@ line                    : statement(NEWLINE | EOF)*;
 
 statement               : letDeclaration | fnDeclaration;
 
-letDeclaration          : LET (MUT?) assignment;
+letDeclaration          : LET (MUT?) IDENT assignment;
 
 fnDeclaration           : FN IDENT fnParams codeBlock;
 
@@ -18,7 +18,7 @@ codeBlockStatements     : statement+;
 codeBlock               : LCURLBRACE codeBlockStatements? returnStatement? RCURLBRACE;
 returnStatement         : RETURN expression SEMICOLON;
 
-assignment              : IDENT ASSIGN expression;
+assignment              : ASSIGN expression;
 expression              : left=expression operator=(DIVISION|ASTERISK) right=expression # binaryOperation
                         | left=expression operator=(PLUS|MINUS) right=expression        # binaryOperation
                         | LPAREN expression RPAREN                                      # parenExpression
