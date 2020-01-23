@@ -1,10 +1,12 @@
 package com.couch.kotlinx
 
+import com.couch.toylang.ToylangParser
+import com.couch.toylang.ToylangParserListener
 import org.antlr.v4.kotlinruntime.ParserRuleContext
 import org.antlr.v4.kotlinruntime.tree.ErrorNode
 import org.antlr.v4.kotlinruntime.tree.TerminalNode
 
-class ToylangListener: ToylangParserListener{
+class ToylangListener: ToylangParserListener {
     private val prettyPrinter = PrettyPrintTree()
     private val bytecodeSB = StringBuilder()
     override fun enterToylangFile(ctx: ToylangParser.ToylangFileContext) {

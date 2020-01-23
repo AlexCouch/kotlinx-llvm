@@ -5,38 +5,6 @@ import org.bytedeco.javacpp.PointerPointer
 import org.bytedeco.llvm.LLVM.*
 import org.bytedeco.llvm.global.LLVM
 
-class Module(val name: String){
-    val module = LLVM.LLVMModuleCreateWithName(name)
-
-    init{
-        println("Created an empty module")
-    }
-
-    fun addGlobal(name: String, block: GlobalVariable.()->Unit): LLVMValueRef{
-        val globalVariable = GlobalVariable(name, this.module)
-        globalVariable.block()
-        val global = globalVariable.build()
-        println("Created global variable in empty module")
-        return global
-    }
-
-    fun addFunction(name: String, block: Function.()->Unit): LLVMValueRef{
-        val function = Function(name, this.module)
-        function.block()
-        return function.functionRef
-    }
-}
-
-class GlobalVariable(val name: String, val module: LLVMModuleRef){
-    var type: LLVMTypeRef? = null
-    var value: LLVMValueRef? = null
-    fun build(): LLVMValueRef {
-        val global = LLVM.LLVMAddGlobal(this.module, this.type ?: LLVM.LLVMVoidType(), this.name)
-        LLVM.LLVMSetInitializer(global, LLVM.LLVMConstInt(LLVM.LLVMInt32Type(), 5, 0))
-        return global
-    }
-}
-
 class BasicBlock(val name: String, private val function: LLVMValueRef){
     val builder = LLVM.LLVMCreateBuilder()
 
@@ -65,38 +33,21 @@ class BasicBlock(val name: String, private val function: LLVMValueRef){
     fun addRet(retValue: LLVMValueRef? = null) = LLVM.LLVMBuildRet(this.builder, retValue)
 }
 
-class Function(val name: String, val module: LLVMModuleRef){
-    var returnType: LLVMTypeRef? = null
-    val paramsArray = arrayListOf(LLVM.LLVMInt32Type(), LLVM.LLVMDoubleType())
-    val params = PointerPointer<LLVMTypeRef>(*paramsArray.toTypedArray())
-    val functionRef = LLVM.LLVMAddFunction(this.module, this.name, returnType ?: LLVM.LLVMFunctionType(LLVM.LLVMVoidType(), params, paramsArray.size, 0))
-    init{
-        println("Adding function $name")
-        println("function address: ${functionRef.address()}")
-    }
-    fun addBlock(name: String, block: BasicBlock.()->Unit){
-        val basicblock = BasicBlock(name, this.functionRef)
-        basicblock.block()
-    }
-}
-
 class AdditionInstruction(private val name: String){
     var left: LLVMValueRef? = null
     var right: LLVMValueRef? = null
     fun build(builder: LLVMBuilderRef): LLVMValueRef = LLVM.LLVMBuildAdd(builder, this.left, this.right, name)
 }
 
-fun buildModule(name: String, block: Module.()->Unit): Module{
-    val module = Module(name)
-    module.block()
-    return module
-}
+
 
 fun main(){
     val module = buildModule("test"){
-        this.addGlobal("testVar"){
-            this.type = LLVM.LLVMInt32Type()
+        createGlobalVariable("testVar", Type.Int32Type(), this){
+            setGlobalInitializer(this, 5)
         }
+        /*
+            TODO: Functions
         this.addFunction("testFunc"){
             this.paramsArray.add(LLVM.LLVMInt32Type())
             this.addBlock("testFunc_local"){
@@ -108,11 +59,12 @@ fun main(){
                 this.addRet()
             }
 
-            LLVM.LLVMVerifyFunction(this.functionRef, LLVM.LLVMPrintMessageAction)
+            LLVM.LLVMVerifyFunction(this.functionRef, LLVM.LLVMAbortProcessAction)
         }
+         */
     }
     val error = BytePointer()
-    val status = LLVM.LLVMVerifyModule(module.module, LLVM.LLVMReturnStatusAction, error)
+    val status = LLVM.LLVMVerifyModule(module.module, LLVM.LLVMAbortProcessAction, error)
     println("Verified module")
     println(status)
     LLVM.LLVMDisposeMessage(error)
