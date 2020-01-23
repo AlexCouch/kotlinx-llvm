@@ -1,0 +1,4 @@
+*.bc
+build/
+.idea/
+.gradle/
