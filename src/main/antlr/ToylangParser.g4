@@ -12,10 +12,10 @@ letDeclaration          : LET (MUT?) IDENT assignment;
 
 fnDeclaration           : FN IDENT fnParams codeBlock;
 
-fnParam                 : IDENT COLON IDENT;
+fnParam                 : IDENT COLON type;
 fnParams                : LPAREN ((fnParam) | (fnParam COMMA fnParam))* RPAREN;
 codeBlockStatements     : statement+;
-codeBlock               : LCURLBRACE codeBlockStatements? returnStatement? RCURLBRACE;
+codeBlock               : LCURLBRACE codeBlockStatements RCURLBRACE;
 returnStatement         : RETURN expression SEMICOLON;
 
 assignment              : ASSIGN expression;

@@ -89,5 +89,6 @@ dependencies {
     // otherwise, the generated sources will not compile
     compile("com.strumenta.antlr-kotlin:antlr-kotlin-runtime-jvm:86a86f1968")
     compile("org.bytedeco:llvm-platform:9.0.0-1.5.2")
+    compile("com.github.strumenta:kolasu:3d8b934c68")
 //    compile("me.tomassetti:kllvm:0.0.1-SNAPSHOT")
 }

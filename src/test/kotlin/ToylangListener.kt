@@ -8,7 +8,7 @@ import org.antlr.v4.kotlinruntime.tree.ErrorNode
 import org.antlr.v4.kotlinruntime.tree.TerminalNode
 import org.bytedeco.llvm.global.LLVM
 
-class ToylangListener(private val module: Module): ToylangParserListener {
+class ToylangListener(): ToylangParserListener {
     private val prettyPrinter = PrettyPrintTree()
     override fun enterToylangFile(ctx: ToylangParser.ToylangFileContext) {
         prettyPrinter.append("ROOT{"){
@@ -50,7 +50,8 @@ class ToylangListener(private val module: Module): ToylangParserListener {
     override fun enterLetDeclaration(ctx: ToylangParser.LetDeclarationContext) {
         this.prettyPrinter.append("LET{"){
             this.indent{
-                this.append("Mutable: ${ctx.MUT() ?: "false"}")
+                this.append("Mutable: ${ctx.MUT() != null ?: "false"}")
+                this.append("Assignment: ${ctx.findAssignment()}")
             }
         }
     }
@@ -110,11 +111,7 @@ class ToylangListener(private val module: Module): ToylangParserListener {
     }
 
     override fun enterAssignment(ctx: ToylangParser.AssignmentContext) {
-        this.prettyPrinter.append("ASSIGNMENT{"){
-            this.indent{
-                this.append("Identifier: ${ctx.IDENT()?.text}")
-            }
-        }
+        this.prettyPrinter.append("ASSIGNMENT{")
     }
 
     override fun exitAssignment(ctx: ToylangParser.AssignmentContext) {
