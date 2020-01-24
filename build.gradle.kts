@@ -45,6 +45,7 @@ tasks.register<com.strumenta.antlrkotlin.gradleplugin.AntlrKotlinTask>("generate
             // antlr target, required to create kotlin code
             project.dependencies.create("com.strumenta.antlr-kotlin:antlr-kotlin-target:86a86f1968")
     )
+
     maxHeapSize = "64m"
     packageName = "com.couch.toylang"
 //    arguments = listOf("-no-visitor", "-no-listener")
@@ -52,6 +53,9 @@ tasks.register<com.strumenta.antlrkotlin.gradleplugin.AntlrKotlinTask>("generate
     source = project.objects
             .sourceDirectorySet("antlr", "antlr")
             .srcDir("src/main/antlr").apply {
+                include("*.g4")
+            }
+            .srcDir("src/test/antlr").apply{
                 include("*.g4")
             }
     // outputDirectory is required, put it into the build directory
