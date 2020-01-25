@@ -11,6 +11,8 @@ sealed class Type(val llvmType: LLVMTypeRef? = null){
     class Int16Type(): Type(LLVM.LLVMInt16Type())
     class Int32Type(): Type(LLVM.LLVMInt32Type())
     class Int64Type(): Type(LLVM.LLVMInt64Type())
+
+    class FloatType(): Type(LLVM.LLVMFloatType())
     /*
         Other Type
      */

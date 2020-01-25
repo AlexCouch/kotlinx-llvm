@@ -47,20 +47,17 @@ tasks.register<com.strumenta.antlrkotlin.gradleplugin.AntlrKotlinTask>("generate
     )
 
     maxHeapSize = "64m"
-    packageName = "com.couch.toylang"
+    packageName = "toylang"
 //    arguments = listOf("-no-visitor", "-no-listener")
     arguments = listOf("-visitor")
     source = project.objects
             .sourceDirectorySet("antlr", "antlr")
-            .srcDir("src/main/antlr").apply {
-                include("*.g4")
-            }
-            .srcDir("src/test/antlr").apply{
+            .srcDir("src/antlr").apply {
                 include("*.g4")
             }
     // outputDirectory is required, put it into the build directory
     // if you do not want to add the generated sources to version control
-    outputDirectory = File("build/generated-src/antlr/main")
+    outputDirectory = File("build/generated-src/antlr/")
     // use this settings if you want to add the generated sources to version control
     // outputDirectory = File("src/main/kotlin-antlr")
 }
@@ -74,13 +71,13 @@ tasks.getByName("compileKotlin").dependsOn("generateKotlinGrammarSource")
 configure<SourceSetContainer> {
     named("main") {
         withConvention(org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet::class) {
-            kotlin.srcDir("build/generated-src/antlr/main")
+            kotlin.srcDir("build/generated-src/antlr")
             // kotlin.srcDir("src/main/kotlin-antlr")
         }
     }
     named("test"){
         withConvention(org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet::class) {
-            kotlin.srcDir("build/generated-src/antlr/main")
+            kotlin.srcDir("build/generated-src/antlr")
         }
     }
 }

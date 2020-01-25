@@ -3,9 +3,9 @@ package com.couch.kotlinx
 import com.couch.kotlinx.ast.*
 import com.couch.kotlinx.llvm.Module
 import com.couch.kotlinx.llvm.buildModule
-import com.couch.toylang.ToylangLexer
-import com.couch.toylang.ToylangParser
-import com.couch.toylang.ToylangParserBaseVisitor
+import toylang.ToylangLexer
+import toylang.ToylangParser
+import toylang.ToylangParserBaseVisitor
 import org.antlr.v4.kotlinruntime.tree.ParseTree
 
 class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){

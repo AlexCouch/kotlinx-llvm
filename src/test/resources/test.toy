@@ -1,4 +1,1 @@
-let test = 5
-fn anotherTest(testParam: Int, anotherParam: String){
-    let localTest = test
-}
+let test = 10

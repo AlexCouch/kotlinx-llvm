@@ -1,4 +1,4 @@
 ; ModuleID = 'test.bc'
-source_filename = "test"
+source_filename = "src\5Ctest\5Cresources\5Ctest.toy"
 
-@testVar = global i32 5
+@test = global i32 10
