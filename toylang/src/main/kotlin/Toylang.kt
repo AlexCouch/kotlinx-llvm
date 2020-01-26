@@ -2,13 +2,14 @@ package com.couch.kotlinx
 
 import com.couch.kotlinx.ast.*
 import com.couch.kotlinx.llvm.*
-import toylang.ToylangLexer
-import toylang.ToylangParser
+import com.couch.toylang.ToylangLexer
+import com.couch.toylang.ToylangParser
 import com.strumenta.kolasu.model.*
 import org.antlr.v4.kotlinruntime.*
-import org.antlr.v4.kotlinruntime.tree.ParseTreeWalker
 import org.bytedeco.javacpp.BytePointer
 import org.bytedeco.llvm.global.LLVM
+import java.io.File
+import java.io.FileInputStream
 
 const val DEBUG = true
 
@@ -29,8 +30,10 @@ fun convertStringLitNodeToString(stringNode: StringLiteralNode){
     }
 }
 
+class Test
+
 fun main(){
-    val testFile = CharStreams.fromFileName("src/test/resources/test.toy")
+    val testFile = CharStreams.fromFileName("test.toy")
     val lexer = ToylangLexer(testFile)
     val parser = ToylangParser(CommonTokenStream(lexer))
     val tree = parser.toylangFile()

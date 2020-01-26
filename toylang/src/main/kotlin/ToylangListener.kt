@@ -1,12 +1,10 @@
 package com.couch.kotlinx
 
-import com.couch.kotlinx.llvm.*
-import toylang.ToylangParser
-import toylang.ToylangParserListener
+import com.couch.toylang.ToylangParser
+import com.couch.toylang.ToylangParserListener
 import org.antlr.v4.kotlinruntime.ParserRuleContext
 import org.antlr.v4.kotlinruntime.tree.ErrorNode
 import org.antlr.v4.kotlinruntime.tree.TerminalNode
-import org.bytedeco.llvm.global.LLVM
 
 class ToylangListener(): ToylangParserListener {
     private val prettyPrinter = PrettyPrintTree()

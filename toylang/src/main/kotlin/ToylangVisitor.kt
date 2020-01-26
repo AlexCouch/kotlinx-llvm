@@ -1,12 +1,8 @@
 package com.couch.kotlinx
 
 import com.couch.kotlinx.ast.*
-import com.couch.kotlinx.llvm.Module
-import com.couch.kotlinx.llvm.buildModule
-import toylang.ToylangLexer
-import toylang.ToylangParser
-import toylang.ToylangParserBaseVisitor
-import org.antlr.v4.kotlinruntime.tree.ParseTree
+import com.couch.toylang.ToylangParser
+import com.couch.toylang.ToylangParserBaseVisitor
 
 class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){
     /*override fun visit(tree: ParseTree): ToylangASTNode? {

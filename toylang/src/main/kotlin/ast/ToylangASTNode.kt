@@ -1,7 +1,5 @@
 package com.couch.kotlinx.ast
 
-import com.strumenta.kolasu.model.Derived
-import com.strumenta.kolasu.model.Link
 import com.strumenta.kolasu.model.Node
 
 typealias RootNode = ToylangASTNode.ToylangASTRootNode
