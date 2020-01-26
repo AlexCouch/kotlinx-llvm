@@ -126,11 +126,12 @@ class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){
         val statements = ctx.findCodeBlockStatements()?.findStatement()!!.map{
             this.visitStatement(it)
         }
-        return CodeblockNode(statements)
+        val returnStatement = if(ctx.findReturnStatement() != null) this.visitReturnStatement(ctx.findReturnStatement()!!) else ReturnStatementNode(NoneExpressionNode())
+        return CodeblockNode(statements, returnStatement)
     }
 
     override fun visitType(ctx: ToylangParser.TypeContext): TypeNode {
-        return TypeNode(IdentifierNode(ctx.IDENT()?.symbol?.text!!))
+        return TypeNode(IdentifierNode(ctx.IDENT()!!.symbol!!.text!!))
     }
 
     override fun visitFnDeclaration(ctx: ToylangParser.FnDeclarationContext): FunctionDeclNode {
@@ -139,6 +140,16 @@ class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){
         }
         val identifier = IdentifierNode(ctx.IDENT()?.symbol?.text!!)
         val codeBlock = this.visitCodeBlock(ctx.findCodeBlock()!!)
-        return FunctionDeclNode(identifier, params!!, codeBlock)
+        val returnType = if(ctx.findFnType() != null) this.visitFnType(ctx.findFnType()!!) else FunctionTypeNode(TypeNode(IdentifierNode("Unit")))
+        return FunctionDeclNode(identifier, params!!, codeBlock, returnType)
+    }
+
+    override fun visitReturnStatement(ctx: ToylangParser.ReturnStatementContext): ReturnStatementNode {
+        return ReturnStatementNode(this.determineExpression(ctx.findExpression()!!))
+    }
+
+    override fun visitFnType(ctx: ToylangParser.FnTypeContext): FunctionTypeNode {
+        val type = TypeNode(IdentifierNode(ctx.findType()?.IDENT()?.symbol?.text!!))
+        return FunctionTypeNode(type)
     }
 }

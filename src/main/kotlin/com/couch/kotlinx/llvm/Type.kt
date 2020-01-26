@@ -3,6 +3,10 @@ package com.couch.kotlinx.llvm
 import org.bytedeco.llvm.LLVM.LLVMTypeRef
 import org.bytedeco.llvm.global.LLVM
 
+/**
+ * This sealed class allows you to capture information about a given type.
+ * This lets you create either primitive types, or collection types that contain information about what you're collecting
+ */
 sealed class Type(val llvmType: LLVMTypeRef? = null){
     /*
         Integer Types
@@ -13,6 +17,7 @@ sealed class Type(val llvmType: LLVMTypeRef? = null){
     class Int64Type(): Type(LLVM.LLVMInt64Type())
 
     class FloatType(): Type(LLVM.LLVMFloatType())
+    class DoubleType(): Type(LLVM.LLVMDoubleType())
     /*
         Other Type
      */

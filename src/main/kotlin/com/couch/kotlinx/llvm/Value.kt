@@ -5,25 +5,15 @@ import org.bytedeco.llvm.LLVM.LLVMTypeRef
 import org.bytedeco.llvm.LLVM.LLVMValueRef
 import org.bytedeco.llvm.global.LLVM
 
-data class Value(val type: Type, val value: LLVMValueRef)
+sealed class Value(val type: Type, val value: LLVMValueRef){
+    class NoneValue: Value(Type.VoidType(), LLVM.LLVMConstNull(Type.Int8Type().llvmType))
 
-fun <T> setGlobalInitializer(variable: GlobalVariable, value: T) {
-    println("Creating global value")
-    val type = variable.type
-    val valueType = when (value) {
-        is Int -> Value(type, LLVM.LLVMConstInt(type.llvmType, value.toLong(), 0))
-        is Double -> Value(type, LLVM.LLVMConstReal(type.llvmType, value))
-        is Float -> Value(type, LLVM.LLVMConstReal(type.llvmType, value as Double))
-        is Array<*> -> {
-            val elements = arrayListOf<LLVMTypeRef>()
-            value.forEach { elements.add((it as Type).llvmType ?: LLVM.LLVMVoidType()) }
-            Value(type, LLVM.LLVMConstArray((type as Type.ArrayType).arrayType.llvmType, PointerPointer<LLVMTypeRef>(*(elements.toTypedArray())), type.arrayCount))
-        }
-        else -> {
-            Value(Type.VoidType(), LLVM.LLVMConstNull(LLVM.LLVMVoidType()))
-        }
-    }
-    println("Setting global initializer")
-    LLVM.LLVMSetInitializer(variable.pointer.alloc, valueType.value)
-    variable.value = valueType
+    data class Int8ConstValue(val byte: Byte): Value(Type.Int8Type(), LLVM.LLVMConstInt(Type.Int8Type().llvmType, byte.toLong(), 0))
+    data class Int16ConstValue(val short: Short): Value(Type.Int16Type(), LLVM.LLVMConstInt(Type.Int8Type().llvmType, short.toLong(), 0))
+    data class Int32ConstValue(val int: Int): Value(Type.Int32Type(), LLVM.LLVMConstInt(Type.Int8Type().llvmType, int.toLong(), 0))
+    data class Int64ConstValue(val long: Long): Value(Type.Int64Type(), LLVM.LLVMConstInt(Type.Int8Type().llvmType, long, 0))
+
+    data class FloatConstValue(val float: Float): Value(Type.FloatType(), LLVM.LLVMConstReal(Type.FloatType().llvmType, float.toDouble()))
+    data class DoubleConstValue(val double: Double): Value(Type.DoubleType(), LLVM.LLVMConstReal(Type.DoubleType().llvmType, double))
+    data class StringConstValue(val string: String): Value(Type.ArrayType(Type.Int8Type(), string.length), LLVM.LLVMConstString(string, string.length, 0))
 }

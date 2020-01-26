@@ -84,6 +84,14 @@ class ToylangListener(): ToylangParserListener {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
+    override fun enterFnType(ctx: ToylangParser.FnTypeContext) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun exitFnType(ctx: ToylangParser.FnTypeContext) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
     override fun enterCodeBlockStatements(ctx: ToylangParser.CodeBlockStatementsContext) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }

@@ -24,6 +24,9 @@ typealias FunctionDeclNode = ToylangASTNode.ToylangASTStatementNode.ToylangASTFu
 typealias ParamNode = ToylangASTNode.ToylangASTFunctionParamNode
 typealias TypeNode = ToylangASTNode.ToylangASTTypeNode
 typealias CodeblockNode = ToylangASTNode.ToylangASTFunctionCodeblockNode
+typealias FunctionTypeNode = ToylangASTNode.ToylangASTFunctionTypeNode
+typealias ReturnStatementNode = ToylangASTNode.ToylangASTStatementNode.ToylangASTReturnStatement
+typealias NoneExpressionNode = ToylangASTNode.ToylangASTStatementNode.ToylangASTExpressionNode.ToylangASTNoneExpression
 
 sealed class ToylangASTNode: Node(){
     data class ToylangASTRootNode(val statements: ArrayList<ToylangASTStatementNode> = arrayListOf()): ToylangASTNode()
@@ -62,10 +65,18 @@ sealed class ToylangASTNode: Node(){
                         override val right: ToylangASTExpressionNode
                 ) : BinaryOperation(left, right)
             }
+            class ToylangASTNoneExpression: ExpressionNode()
         }
-        data class ToylangASTFunctionDeclarationNode(val identifier: IdentifierNode, val params: List<ParamNode>, val codeBlock: CodeblockNode): ToylangASTStatementNode()
+        data class ToylangASTFunctionDeclarationNode(
+                val identifier: IdentifierNode,
+                val params: List<ParamNode>,
+                val codeBlock: CodeblockNode,
+                val returnType: FunctionTypeNode
+        ): ToylangASTStatementNode()
+        data class ToylangASTReturnStatement(val expression: ExpressionNode): StatementNode()
     }
     data class ToylangASTFunctionParamNode(val identifier: IdentifierNode, val type: TypeNode): ToylangASTNode()
-    data class ToylangASTFunctionCodeblockNode(val statements: List<StatementNode>): ToylangASTNode()
+    data class ToylangASTFunctionCodeblockNode(val statements: List<StatementNode>, val returnStatement: ReturnStatementNode): ToylangASTNode()
     data class ToylangASTTypeNode(val typeIdentifier: IdentifierNode): ToylangASTNode()
+    data class ToylangASTFunctionTypeNode(val type: TypeNode): ToylangASTNode()
 }
