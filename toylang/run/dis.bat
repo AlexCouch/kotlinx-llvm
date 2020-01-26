@@ -1,2 +1,4 @@
+set "curdir=%cd%"
 cd %0\..
-llvm-dis test.bc
+python3 dis.py
+cd %curdir%
