@@ -26,5 +26,5 @@ This also promotes communication.
 Also, when this project does move to KMP, every platform should have their own branch.
 
 ## Roadmap
-Federico Tomassetti and I have discussed making this multiplatform. I am hoping that at some point, the main gradle file will be changed to be multiplatform. It shouldn't be too hard to do.
+I am hoping that at some point, the main gradle file will be changed to be multiplatform. It shouldn't be too hard to do.
 I will also make a trello, as mentioned above.
