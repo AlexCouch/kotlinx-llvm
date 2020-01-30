@@ -3,10 +3,9 @@ package com.couch.kotlinx.llvm
 import org.bytedeco.llvm.global.LLVM
 
 class GlobalVariable(val name: String, val module: Module, val type: Type, val pointer: Pointer){
-    private var value: Value = Value.NoneValue()
-
     fun setGlobalInitializer(block: GlobalVariable.()->Value){
-        this.value = this.block()
+        val value = this.block()
+        LLVM.LLVMSetInitializer(pointer.alloc, value.value)
     }
 }
 

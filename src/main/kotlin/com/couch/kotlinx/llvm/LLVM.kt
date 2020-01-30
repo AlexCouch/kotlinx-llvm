@@ -9,7 +9,7 @@ fun main(){
     val module = buildModule("test"){
         createGlobalVariable("testVar", Type.Int32Type()){
             setGlobalInitializer{
-                Value.Int32ConstValue(5)
+                Value.FloatConstValue(5.0f)
             }
         }
 

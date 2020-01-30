@@ -1,5 +1,6 @@
 package com.couch.kotlinx.ast
 
+import com.couch.kotlinx.Scope
 import com.strumenta.kolasu.model.Node
 
 typealias RootNode = ToylangASTNode.ToylangASTRootNode
@@ -28,8 +29,14 @@ typealias FunctionTypeNode = ToylangASTNode.ToylangASTFunctionTypeNode
 typealias ReturnStatementNode = ToylangASTNode.ToylangASTStatementNode.ToylangASTReturnStatement
 typealias NoneExpressionNode = ToylangASTNode.ToylangASTStatementNode.ToylangASTExpressionNode.ToylangASTNoneExpression
 
+interface ScopeProvider{
+    var scope: Scope?
+}
+
 sealed class ToylangASTNode: Node(){
-    data class ToylangASTRootNode(val statements: ArrayList<ToylangASTStatementNode> = arrayListOf()): ToylangASTNode()
+    data class ToylangASTRootNode(val statements: ArrayList<ToylangASTStatementNode> = arrayListOf()): ToylangASTNode(), ScopeProvider{
+        override var scope: Scope? = null
+    }
     sealed class ToylangASTStatementNode: ToylangASTNode() {
         data class ToylangASTIdentifierNode(val identifier: String) : StatementNode()
         data class ToylangASTLetNode(val identifier: ToylangASTIdentifierNode, val assignment: AssignmentNode) : StatementNode()
@@ -66,13 +73,16 @@ sealed class ToylangASTNode: Node(){
                 ) : BinaryOperation(left, right)
             }
             class ToylangASTNoneExpression: ExpressionNode()
+            class ToylangASTReferenceNode: ExpressionNode()
         }
         data class ToylangASTFunctionDeclarationNode(
                 val identifier: IdentifierNode,
                 val params: List<ParamNode>,
                 val codeBlock: CodeblockNode,
                 val returnType: FunctionTypeNode
-        ): ToylangASTStatementNode()
+        ): ToylangASTStatementNode(), ScopeProvider{
+            override var scope: Scope? = null
+        }
         data class ToylangASTReturnStatement(val expression: ExpressionNode): StatementNode()
     }
     data class ToylangASTFunctionParamNode(val identifier: IdentifierNode, val type: TypeNode): ToylangASTNode()

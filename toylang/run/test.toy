@@ -1,5 +1,5 @@
-let test = 10;
+let test = "Hello";
 
-fn test(a): Float{
-    return 3.5;
+fn test(a: Float): Float{
+    return a;
 }

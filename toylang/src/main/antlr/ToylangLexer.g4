@@ -10,7 +10,7 @@ MUT                 : 'mut';
 FN                  : 'fn';
 RETURN              : 'return';
 
-IDENT               : [a-zA-Z][A-Za-z0-9_]+;
+IDENT               : [a-zA-Z][A-Za-z0-9_]*;
 
 INTLITERAL          : [0-9]+;
 DECIMALLITERAL      : ([0-9]+ 'f') | [0-9]+ '.' [0-9]+;

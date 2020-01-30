@@ -7,6 +7,8 @@ data class Variable(val name: String, val type: Type, var pointer: Pointer){
     var value: Value? = null
 }
 
+data class FunctionParam(val paramIndex: Int, val type: Type, val value: Value.FunctionParamReferenceValue)
+
 data class AllocatedVariable(val variable: Variable)
 data class Pointer(val type: Type, val alloc: LLVMValueRef)
 

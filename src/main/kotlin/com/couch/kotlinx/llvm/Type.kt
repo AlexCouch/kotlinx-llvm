@@ -7,7 +7,7 @@ import org.bytedeco.llvm.global.LLVM
  * This sealed class allows you to capture information about a given type.
  * This lets you create either primitive types, or collection types that contain information about what you're collecting
  */
-sealed class Type(val llvmType: LLVMTypeRef? = null){
+sealed class Type(val llvmType: LLVMTypeRef){
     /*
         Integer Types
      */
@@ -25,5 +25,5 @@ sealed class Type(val llvmType: LLVMTypeRef? = null){
     class ArrayType(val arrayType: Type, val arrayCount: Int): Type(LLVM.LLVMArrayType(arrayType.llvmType, arrayCount))
     class VectorType(val vectorType: Type, val arrayCount: Int): Type(LLVM.LLVMVectorType(vectorType.llvmType, arrayCount))
     class PointerType(val type: Type): Type(LLVM.LLVMPointerType(type.llvmType, LLVM.LLVMGetPointerAddressSpace(type.llvmType)))
-
+    class ReferenceType(val variable: Variable): Type(variable.type.llvmType)
 }

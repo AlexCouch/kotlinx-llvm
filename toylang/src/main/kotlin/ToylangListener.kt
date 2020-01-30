@@ -8,6 +8,7 @@ import org.antlr.v4.kotlinruntime.tree.TerminalNode
 
 class ToylangListener(): ToylangParserListener {
     private val prettyPrinter = PrettyPrintTree()
+    private val symbolTable = Scope.GlobalScope()
     override fun enterToylangFile(ctx: ToylangParser.ToylangFileContext) {
         prettyPrinter.append("ROOT{"){
             this.indent()

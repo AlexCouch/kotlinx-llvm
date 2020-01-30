@@ -3,6 +3,7 @@ package com.couch.kotlinx
 import com.couch.kotlinx.ast.*
 import com.couch.toylang.ToylangParser
 import com.couch.toylang.ToylangParserBaseVisitor
+import com.strumenta.kolasu.model.children
 
 class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){
     /*override fun visit(tree: ParseTree): ToylangASTNode? {
