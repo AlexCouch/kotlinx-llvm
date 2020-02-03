@@ -7,25 +7,37 @@ import org.bytedeco.llvm.global.LLVM
 
 fun main(){
     val module = buildModule("test"){
-        createGlobalVariable("testVar", Type.Int32Type()){
+        val globalVarValue = "Hello world!"
+        val globalVar = createGlobalVariable("testVar", Type.ArrayType(Type.Int8Type(), globalVarValue.length + 1)){
             setGlobalInitializer{
-                Value.FloatConstValue(5.0f)
+                createStringValue(globalVarValue)
             }
         }
 
         createFunction("testFunc"){
-            this.returnType = Type.Int8Type()
-            this.createFunctionParam{
-                Type.Int32Type()
-            }
-            this.createFunctionParam{
-                Type.FloatType()
-            }
-            this.addBlock("test_block_1"){
+            this.returnType = Type.PointerType(globalVar.pointer.type.llvmType)
+            /*this.createFunctionParam("f"){
+                Type.Int8Type()
+            }*/
+            this.addBlock("test_block_1"){ builder ->
                 this.addReturnStatement {
-                    Value.Int32ConstValue(10)
+                    val namedGlobal = LLVM.LLVMGetNamedGlobal(this@buildModule.module, "testVar")
+                    val pointerpointer = PointerPointer<LLVMValueRef>(*arrayListOf(LLVM.LLVMConstInt(LLVM.LLVMInt32Type(), 1, 0)).toTypedArray())
+                    val gep = LLVM.LLVMBuildGEP(builder, namedGlobal, pointerpointer, 1, "testVar_tmp")
+                    object : Value{
+                        override val type: Type = Type.CustomType(LLVM.LLVMTypeOf(gep))
+                        override val value: LLVMValueRef = gep
+
+                    }
+                    /*object : Value{
+                        override val type: Type = globalVar.type
+                        override val value: LLVMValueRef = globalVar.pointer.alloc
+
+                    }*/
                 }
             }
+            println(LLVM.LLVMPrintModuleToString(this.module.module).string)
+
         }
         /*
             TODO: Functions

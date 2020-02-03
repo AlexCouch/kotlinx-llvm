@@ -2,16 +2,16 @@ package com.couch.kotlinx.llvm
 
 import org.bytedeco.llvm.global.LLVM
 
-class GlobalVariable(val name: String, val module: Module, val type: Type, val pointer: Pointer){
-    fun setGlobalInitializer(block: GlobalVariable.()->Value){
-        val value = this.block()
-        LLVM.LLVMSetInitializer(pointer.alloc, value.value)
-    }
+fun Module.createGlobalVariable(name: String, type: Type, block: Variable.NamedVariable.GlobalVariable.()->Unit): Variable.NamedVariable.GlobalVariable {
+    val globalPointer = LLVM.LLVMAddGlobal(this.module, type.llvmType, name)
+    val globalVar = Variable.NamedVariable.GlobalVariable(name, type, Pointer(type, globalPointer))
+    globalVar.block()
+    this.globalVariables.add(globalVar)
+    return globalVar
 }
 
-fun Module.createGlobalVariable(name: String, type: Type, block: GlobalVariable.()->Unit): GlobalVariable{
-    val globalPointer = LLVM.LLVMAddGlobal(this.module, type.llvmType, name)
-    val globalVar = GlobalVariable(name, this, type, Pointer(type, globalPointer))
-    globalVar.block()
-    return globalVar
+fun Variable.NamedVariable.GlobalVariable.setGlobalInitializer(block: Variable.NamedVariable.GlobalVariable.()->Value){
+    val value = this.block()
+    this.value = value
+    LLVM.LLVMSetInitializer(pointer.alloc, value.value)
 }

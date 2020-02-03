@@ -2,6 +2,7 @@ package com.couch.kotlinx
 
 import com.couch.kotlinx.ast.IdentifierNode
 import com.strumenta.kolasu.model.Derived
+import com.strumenta.kolasu.model.Link
 import com.strumenta.kolasu.model.Node
 import com.strumenta.kolasu.model.walkAncestors
 
@@ -12,7 +13,6 @@ sealed class Symbol(open val symbol: IdentifierNode){
 }
 
 sealed class Scope: Node(){
-    @Derived
     val symbols = arrayListOf<Symbol>()
     val childScopes = arrayListOf<Scope>()
 

@@ -2,21 +2,27 @@ package com.couch.kotlinx.llvm
 
 import org.bytedeco.llvm.LLVM.LLVMValueRef
 import org.bytedeco.llvm.global.LLVM
+import org.omg.CORBA.NameValuePair
 
-data class Variable(val name: String, val type: Type, var pointer: Pointer){
+sealed class Variable(open val name: String, open val type: Type){
     var value: Value? = null
-}
 
-data class FunctionParam(val paramIndex: Int, val type: Type, val value: Value.FunctionParamReferenceValue)
+    sealed class NamedVariable(override val name: String, override val type: Type, open val pointer: Pointer): Variable(name, type){
+        data class GlobalVariable(override val name: String, override val type: Type, override val pointer: Pointer): NamedVariable(name, type, pointer)
+        data class LocalVariable(override val name: String, override val type: Type, override val pointer: Pointer): NamedVariable(name, type, pointer)
+    }
+    data class FunctionParam(val paramIndex: Int, override val name: String, override val type: Type): Variable(name, type)
+
+}
 
 data class AllocatedVariable(val variable: Variable)
 data class Pointer(val type: Type, val alloc: LLVMValueRef)
 
-fun BasicBlock.createVariable(name: String, type: Type, block: Variable.()->Unit): Variable{
+fun BasicBlock.createLocalVariable(name: String, type: Type, block: Variable.()->Unit): Variable{
     val builder = LLVM.LLVMCreateBuilder()
     LLVM.LLVMPositionBuilderAtEnd(builder, this.ref)
     val alloc = LLVM.LLVMBuildAlloca(builder, type.llvmType, name)
-    val variable = Variable(name, type, Pointer(type, alloc))
+    val variable = Variable.NamedVariable.LocalVariable(name, type, Pointer(type, alloc))
     variable.block()
     return variable
 }

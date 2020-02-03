@@ -1,12 +1,11 @@
 package com.couch.kotlinx.llvm
 
-import org.bytedeco.llvm.LLVM.LLVMBuilderRef
-import org.bytedeco.llvm.LLVM.LLVMValueRef
+import com.sun.org.apache.bcel.internal.generic.ReturnInstruction
 import org.bytedeco.llvm.global.LLVM
 
 class AdditionInstruction{
-    var left: Value = Value.NoneValue()
-    var right: Value = Value.NoneValue()
+    var left: Value = NoneValue
+    var right: Value = NoneValue
 }
 
 fun BasicBlock.addAdditionInstruction(name: String, block: AdditionInstruction.()->Unit){
@@ -22,9 +21,8 @@ fun BasicBlock.addReturnStatement(block: BasicBlock.()->Value) {
     val value = this.block()
     val builder = LLVM.LLVMCreateBuilder()
     LLVM.LLVMPositionBuilderAtEnd(builder, this.ref)
-    if(value is Value.NoneValue){
-        LLVM.LLVMBuildRetVoid(builder)
-    }else{
-        LLVM.LLVMBuildRet(builder, value.value)
+    when(value){
+        is NoneValue -> LLVM.LLVMBuildRetVoid(builder)
+        else -> LLVM.LLVMBuildRet(builder, value.value)
     }
 }

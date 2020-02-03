@@ -1,5 +1,5 @@
 let test = "Hello";
 
-fn test(a: Float): Float{
-    return a;
+fn testFunc(a: Float): String{
+    return test;
 }

@@ -15,22 +15,25 @@ class GeneralParsingStage{
         rootNode.walkChildren().forEach {
             when (it) {
                 is LetNode -> {
-                    this.createLetSymbol(it)
+                    this.currentScope.symbols.add(this.createLetSymbol(it))
                 }
                 is FunctionDeclNode -> {
                     this.parseFunctionDeclNode(it)
                 }
             }
         }
+        this.startScope.assignParents()
         rootNode.scope = this.startScope
+
     }
 
     fun createLetSymbol(letNode: LetNode): Symbol = Symbol.VarSymbol(letNode.identifier)
 
     fun parseFunctionDeclNode(functionDeclNode: FunctionDeclNode){
         this.currentScope.symbols.add(Symbol.FunctionDeclSymbol(functionDeclNode.identifier))
-        this.startScope.childScopes.add(this.currentScope)
-        this.currentScope = Scope.FunctionScope()
+        val newScope = Scope.FunctionScope()
+        this.startScope.childScopes.add(newScope)
+        this.currentScope = newScope
         functionDeclNode.params.withIndex().forEach {(idx, it) ->
             this.currentScope.symbols.add(Symbol.FunctionParamSymbol(it.identifier, idx))
         }

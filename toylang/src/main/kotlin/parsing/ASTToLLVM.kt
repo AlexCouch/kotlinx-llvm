@@ -1,41 +1,44 @@
 package com.couch.kotlinx.parsing
 
-import com.couch.kotlinx.Scope
 import com.couch.kotlinx.Symbol
 import com.couch.kotlinx.ast.*
 import com.couch.kotlinx.llvm.*
 import com.strumenta.kolasu.model.walkChildren
+import kotlin.IllegalStateException
 
 class ASTToLLVM{
     fun startGeneratingLLVM(moduleName: String, rootNode: RootNode) = buildModule(moduleName){
             rootNode.walkChildren().forEach {
                 when(it){
-                    is LetNode -> this.parseLetNode(it)
+                    is LetNode -> this.globalVariables.add(this.parseLetNode(it))
                     is FunctionDeclNode -> this.parseFunctionDeclNode(it)
                 }
             }
         }
 
-    fun Module.parseLetNode(letNode: LetNode){
-        when(letNode.assignment.expression){
-            is IntegerLiteralNode -> this.createGlobalVariable(letNode.identifier.identifier, Type.Int32Type()){
-                this.setGlobalInitializer {
-                    Value.Int32ConstValue(letNode.assignment.expression.integer)
+    fun Module.parseLetNode(letNode: LetNode): Variable.NamedVariable.GlobalVariable{
+        return when(letNode.assignment.expression){
+            is IntegerLiteralNode -> {
+                this.createGlobalVariable(letNode.identifier.identifier, Type.Int32Type()){
+                    this.setGlobalInitializer {
+                        createInt32Value(letNode.assignment.expression.integer)
+                    }
                 }
             }
             is DecimalLiteralNode -> this.createGlobalVariable(letNode.identifier.identifier, Type.FloatType()){
                 this.setGlobalInitializer {
-                    Value.FloatConstValue(letNode.assignment.expression.float)
+                    createFloatValue(letNode.assignment.expression.float)
                 }
             }
             is StringLiteralNode -> {
                 val stringContent = this@ASTToLLVM.parseStringLiteralNode(letNode.assignment.expression)
                 this.createGlobalVariable(letNode.identifier.identifier, Type.ArrayType(Type.Int8Type(), stringContent.length + 1)){
                     this.setGlobalInitializer {
-                        Value.StringConstValue(stringContent)
+                        createStringValue(stringContent)
                     }
                 }
             }
+            else -> throw IllegalStateException("Could not create global variable: ${letNode.identifier.identifier}")
         }
     }
 
@@ -63,18 +66,19 @@ class ASTToLLVM{
         }.joinToString()
     }
 
-    fun BasicBlock.parseLocalVariableNode(letNode: LetNode){
-        when(letNode.assignment.expression){
-            is IntegerLiteralNode -> this.createVariable(letNode.identifier.identifier, Type.Int32Type()){
-                this.value = Value.Int32ConstValue(letNode.assignment.expression.integer)
+    fun BasicBlock.parseLocalVariableNode(letNode: LetNode): Variable{
+        return when(letNode.assignment.expression){
+            is IntegerLiteralNode -> this.createLocalVariable(letNode.identifier.identifier, Type.Int32Type()){
+                this.value = createInt32Value(letNode.assignment.expression.integer)
             }
-            is DecimalLiteralNode -> this.createVariable(letNode.identifier.identifier, Type.FloatType()){
-                this.value = Value.FloatConstValue(letNode.assignment.expression.float)
+            is DecimalLiteralNode -> this.createLocalVariable(letNode.identifier.identifier, Type.FloatType()){
+                this.value = createFloatValue(letNode.assignment.expression.float)
             }
-            is StringLiteralNode -> this.createVariable(letNode.identifier.identifier, Type.Int32Type()){
+            is StringLiteralNode -> this.createLocalVariable(letNode.identifier.identifier, Type.Int32Type()){
                 val stringContent = this@ASTToLLVM.parseStringLiteralNode(letNode.assignment.expression)
-                this.value = Value.StringConstValue(stringContent)
+                this.value = createStringValue(stringContent)
             }
+            else -> throw IllegalStateException("Could not parse local variable")
         }
     }
 
@@ -90,31 +94,33 @@ class ASTToLLVM{
     fun Module.parseFunctionDeclNode(functionDeclNode: FunctionDeclNode){
         this.createFunction(functionDeclNode.identifier.identifier){
             this.returnType = this@ASTToLLVM.convertTypeIdentifier(functionDeclNode.returnType.type.typeIdentifier)
-            functionDeclNode.params.forEach {
-                this.createFunctionParam {
+            this.localVariables.addAll(functionDeclNode.params.map {
+                this.createFunctionParam(it.identifier.identifier) {
                     this@ASTToLLVM.convertTypeIdentifier(it.type.typeIdentifier)
                 }
-            }
+            })
             this.addBlock("local_${functionDeclNode.identifier.identifier}_block"){
-                functionDeclNode.codeBlock.statements.forEach {
+                val localVars = functionDeclNode.codeBlock.statements.map {
                     when(it){
                         is LetNode -> {
                             this.parseLocalVariableNode(it)
                         }
+                        else -> throw IllegalStateException("Could not parse local block statement for block ${this.name}")
                     }
                 }
+                this@createFunction.localVariables.addAll(localVars)
                 this.addReturnStatement {
                     val returnStatement = functionDeclNode.codeBlock.returnStatement
                     when(returnStatement.expression){
                         is IntegerLiteralNode -> {
-                            Value.Int32ConstValue(returnStatement.expression.integer)
+                            createInt32Value(returnStatement.expression.integer)
                         }
                         is DecimalLiteralNode -> {
-                            Value.FloatConstValue(returnStatement.expression.float)
+                            createFloatValue(returnStatement.expression.float)
                         }
                         is StringLiteralNode -> {
                             val stringContent = this@ASTToLLVM.parseStringLiteralNode(returnStatement.expression)
-                            Value.StringConstValue(stringContent)
+                            createStringValue(stringContent)
                         }
                         is ValueReferenceNode -> {
                             if(!functionDeclNode.scope!!.doesSymbolExist(returnStatement.expression.ident.identifier)){
@@ -124,6 +130,11 @@ class ASTToLLVM{
                             when(symbolNodeReference){
                                 is Symbol.FunctionParamSymbol -> {
                                     this.function.getParam(symbolNodeReference.paramIndex)
+                                }
+                                is Symbol.VarSymbol -> {
+                                    this@createFunction.localVariables.find {
+                                        it.name == symbolNodeReference.symbol.identifier
+                                    }?.value ?: this@createFunction.module.getGlobalReference(symbolNodeReference.symbol.identifier)!!
                                 }
                                 else -> throw IllegalArgumentException("Unrecognized symbol reference")
                             }
