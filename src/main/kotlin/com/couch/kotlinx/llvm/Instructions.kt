@@ -10,7 +10,7 @@ class AdditionInstruction{
     var right: Value = NoneValue
 }
 
-fun BasicBlock.addAdditionInstruction(name: String, block: AdditionInstruction.()->Unit){
+fun Builder.addAdditionInstruction(name: String, block: AdditionInstruction.()->Unit){
     val additionInstruction = AdditionInstruction()
     additionInstruction.block()
     val builder = LLVM.LLVMCreateBuilder()
@@ -18,14 +18,16 @@ fun BasicBlock.addAdditionInstruction(name: String, block: AdditionInstruction.(
 
 }
 
-fun Builder.buildGetElementPointer(arrayVar: Variable, block: ()->Value): Value{
-    require(arrayVar.type is Type.ArrayType){
+fun Builder.buildGetElementPointer(tempVarName: String, block: ()->Value): Value{
+    val value = block()
+    require(value.type is Type.ArrayType){
         "Variable is not an array type"
     }
     val instrs = arrayListOf(LLVM.LLVMConstInt(LLVM.LLVMInt32Type(), 0, 0))
-    val elementPtr = LLVM.LLVMBuildGEP(builder, block().value, PointerPointer(*instrs.toTypedArray()), 1, "${arrayVar.name}_ref")
+    val elementPtr = LLVM.LLVMBuildGEP(builder, block().value, PointerPointer(*instrs.toTypedArray()), 1, "${tempVarName}_ref")
+    println(LLVM.LLVMPrintValueToString(elementPtr).string)
     return createReferenceValue(object : Value{
-        override val type: Type = Type.CustomType(LLVM.LLVMTypeOf(elementPtr))
+        override val type: Type = value.type
         override val value: LLVMValueRef = elementPtr
     })
 }

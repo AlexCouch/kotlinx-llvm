@@ -84,8 +84,6 @@ class ASTToLLVM{
             else -> Type.VoidType()
     }
 
-
-
     fun Module.parseFunctionDeclNode(functionDeclNode: FunctionDeclNode){
         this.createFunction(functionDeclNode.identifier.identifier){
             this.returnType = this@ASTToLLVM.convertTypeIdentifier(functionDeclNode.returnType.type.typeIdentifier)
@@ -129,13 +127,15 @@ class ASTToLLVM{
                                     }
                                     is Symbol.VarSymbol -> {
                                         val symbolName = symbolNodeReference.symbol.identifier
-                                        val varRef = this@createFunction.localVariables.find{ it.name == symbolName } ?:
-                                        this@createFunction.module.getGlobalReference(symbolNodeReference.symbol.identifier)!!
+                                        val varRef = this@createFunction.localVariables.find{
+                                            it.name == symbolName
+                                        } ?: this@createFunction.module.getGlobalReference(symbolName)!!
                                         var retStatement: Value = varRef.value!!
                                         if(varRef.type is Type.ArrayType){
-                                            retStatement = this.buildGetElementPointer(varRef){
-                                                retStatement
+                                            val gep = this.buildGetElementPointer("${varRef.name}ptr_tmp"){
+                                                this@createFunction.module.getGlobalReference(symbolName)!!.value!!
                                             }
+                                            retStatement = this.buildBitcast(gep, this@createFunction.returnType, "${symbolName}_bitcast")
                                         }
                                         retStatement
                                     }

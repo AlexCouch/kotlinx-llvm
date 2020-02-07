@@ -17,7 +17,7 @@ fun main(){
             this.addBlock("test_block_1"){
                 this.startBuilder {
                     this.addReturnStatement {
-                        val gep = this.buildGetElementPointer(globalVar){
+                        val gep = this.buildGetElementPointer("testVarPointer"){
                             this@buildModule.getGlobalReference("testVar")!!.value!!
                         }
                         this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "testVarCast")
