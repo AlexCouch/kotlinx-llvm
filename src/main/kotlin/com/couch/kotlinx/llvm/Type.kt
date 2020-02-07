@@ -24,8 +24,8 @@ sealed class Type(val llvmType: LLVMTypeRef){
     class VoidType(): Type(LLVM.LLVMVoidType())
     open class ArrayType(arrayType: Type, val arrayCount: Int): Type(LLVM.LLVMArrayType(arrayType.llvmType, arrayCount))
     class VectorType(vectorType: Type, arrayCount: Int): Type(LLVM.LLVMVectorType(vectorType.llvmType, arrayCount))
-    open class PointerType(val type: LLVMTypeRef): Type(LLVM.LLVMPointerType(type, 0))
+    open class PointerType(val type: Type): Type(LLVM.LLVMPointerType(type.llvmType, 0))
     class ReferenceType(variable: Variable): Type(variable.type.llvmType)
-    class StringType: PointerType(Int8Type().llvmType)
+    class StringType: PointerType(Int8Type())
     class CustomType(llvmType: LLVMTypeRef): Type(llvmType)
 }

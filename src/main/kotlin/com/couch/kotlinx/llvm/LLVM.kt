@@ -9,58 +9,24 @@ fun main(){
     val module = buildModule("test"){
         val globalVarValue = "Hello world!"
         val globalVar = createGlobalVariable("testVar", Type.ArrayType(Type.Int8Type(), globalVarValue.length + 1)){
-            setGlobalInitializer{
-                createStringValue(globalVarValue)
-            }
+            createStringValue(globalVarValue)
         }
 
         createFunction("testFunc"){
-            this.returnType = Type.PointerType(Type.Int8Type().llvmType)
-            /*this.createFunctionParam("f"){
-                Type.Int8Type()
-            }*/
-            this.addBlock("test_block_1"){ builder ->
-                this.addReturnStatement {
-                    val namedGlobal = LLVM.LLVMGetNamedGlobal(this@buildModule.module, "testVar")
-                    val pointerpointer = PointerPointer<LLVMValueRef>(*arrayListOf(LLVM.LLVMConstInt(LLVM.LLVMInt32Type(), 1, 0)).toTypedArray())
-                    val gep = LLVM.LLVMBuildGEP(builder, namedGlobal, pointerpointer, 1, "testVar_tmp")
-                    val temp = createLocalVariable("testVar_temp", Type.PointerType(Type.ArrayType(Type.Int8Type(), globalVarValue.length + 1).llvmType)){
-                        this.value = object : Value{
-                            override val type: Type = Type.CustomType(LLVM.LLVMTypeOf(gep))
-                            override val value: LLVMValueRef = gep
+            this.returnType = Type.PointerType(Type.Int8Type())
+            this.addBlock("test_block_1"){
+                this.startBuilder {
+                    this.addReturnStatement {
+                        val gep = this.buildGetElementPointer(globalVar){
+                            this@buildModule.getGlobalReference("testVar")!!.value!!
                         }
+                        this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "testVarCast")
                     }
-                    val tempCast = LLVM.LLVMBuildBitCast(builder, temp.pointer.alloc, Type.PointerType(Type.Int8Type().llvmType).llvmType, "temp")
-                    object : Value{
-                        override val type: Type = Type.CustomType(LLVM.LLVMPointerType(LLVM.LLVMTypeOf(tempCast), 0))
-                        override val value: LLVMValueRef = tempCast
-                    }
-                    /*object : Value{
-                        override val type: Type = globalVar.type
-                        override val value: LLVMValueRef = globalVar.pointer.alloc
-
-                    }*/
                 }
             }
             println(LLVM.LLVMPrintModuleToString(this.module.module).string)
 
         }
-        /*
-            TODO: Functions
-        this.addFunction("testFunc"){
-            this.paramsArray.add(LLVM.LLVMInt32Type())
-            this.addBlock("testFunc_local"){
-                val firstParam = LLVM.LLVMGetFirstParam(this@addFunction.functionRef)
-                this.addLocalVariable("five", LLVM.LLVMInt32Type(), firstParam)
-                val globalVariableRef = LLVM.LLVMGetNamedGlobal(this@addFunction.module, "testVar")
-                val globalVariableType = LLVM.LLVMGlobalGetValueType(globalVariableRef)
-                this.addLocalVariable("global_reference",  globalVariableType, globalVariableRef)
-                this.addRet()
-            }
-
-            LLVM.LLVMVerifyFunction(this.functionRef, LLVM.LLVMAbortProcessAction)
-        }
-         */
     }
     val error = BytePointer()
     val status = LLVM.LLVMVerifyModule(module.module, LLVM.LLVMAbortProcessAction, error)

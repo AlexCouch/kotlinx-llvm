@@ -4,6 +4,7 @@ import com.couch.kotlinx.Symbol
 import com.couch.kotlinx.ast.*
 import com.couch.kotlinx.llvm.*
 import com.strumenta.kolasu.model.walkChildren
+import org.bytedeco.llvm.global.LLVM
 import kotlin.IllegalStateException
 
 class ASTToLLVM{
@@ -20,22 +21,16 @@ class ASTToLLVM{
         return when(letNode.assignment.expression){
             is IntegerLiteralNode -> {
                 this.createGlobalVariable(letNode.identifier.identifier, Type.Int32Type()){
-                    this.setGlobalInitializer {
-                        createInt32Value(letNode.assignment.expression.integer)
-                    }
+                    createInt32Value(letNode.assignment.expression.integer)
                 }
             }
             is DecimalLiteralNode -> this.createGlobalVariable(letNode.identifier.identifier, Type.FloatType()){
-                this.setGlobalInitializer {
-                    createFloatValue(letNode.assignment.expression.float)
-                }
+                createFloatValue(letNode.assignment.expression.float)
             }
             is StringLiteralNode -> {
                 val stringContent = this@ASTToLLVM.parseStringLiteralNode(letNode.assignment.expression)
                 this.createGlobalVariable(letNode.identifier.identifier, Type.ArrayType(Type.Int8Type(), stringContent.length + 1)){
-                    this.setGlobalInitializer {
-                        createStringValue(stringContent)
-                    }
+                    createStringValue(stringContent)
                 }
             }
             else -> throw IllegalStateException("Could not create global variable: ${letNode.identifier.identifier}")
@@ -69,14 +64,14 @@ class ASTToLLVM{
     fun BasicBlock.parseLocalVariableNode(letNode: LetNode): Variable{
         return when(letNode.assignment.expression){
             is IntegerLiteralNode -> this.createLocalVariable(letNode.identifier.identifier, Type.Int32Type()){
-                this.value = createInt32Value(letNode.assignment.expression.integer)
+                createInt32Value(letNode.assignment.expression.integer)
             }
             is DecimalLiteralNode -> this.createLocalVariable(letNode.identifier.identifier, Type.FloatType()){
-                this.value = createFloatValue(letNode.assignment.expression.float)
+                createFloatValue(letNode.assignment.expression.float)
             }
             is StringLiteralNode -> this.createLocalVariable(letNode.identifier.identifier, Type.Int32Type()){
                 val stringContent = this@ASTToLLVM.parseStringLiteralNode(letNode.assignment.expression)
-                this.value = createStringValue(stringContent)
+                createStringValue(stringContent)
             }
             else -> throw IllegalStateException("Could not parse local variable")
         }
@@ -85,7 +80,7 @@ class ASTToLLVM{
     fun convertTypeIdentifier(identifierNode: IdentifierNode): Type = when(identifierNode.identifier){
             "Int" -> Type.Int32Type()
             "Float" -> Type.FloatType()
-            "String" -> Type.PointerType(Type.Int8Type())
+            "String" -> Type.PointerType(Type.Int8Type().llvmType)
             else -> Type.VoidType()
     }
 
@@ -109,38 +104,48 @@ class ASTToLLVM{
                     }
                 }
                 this@createFunction.localVariables.addAll(localVars)
-                this.addReturnStatement {
-                    val returnStatement = functionDeclNode.codeBlock.returnStatement
-                    when(returnStatement.expression){
-                        is IntegerLiteralNode -> {
-                            createInt32Value(returnStatement.expression.integer)
-                        }
-                        is DecimalLiteralNode -> {
-                            createFloatValue(returnStatement.expression.float)
-                        }
-                        is StringLiteralNode -> {
-                            val stringContent = this@ASTToLLVM.parseStringLiteralNode(returnStatement.expression)
-                            createStringValue(stringContent)
-                        }
-                        is ValueReferenceNode -> {
-                            if(!functionDeclNode.scope!!.doesSymbolExist(returnStatement.expression.ident.identifier)){
-                                throw IllegalArgumentException("Symbol ${returnStatement.expression.ident.identifier} does not exists in current scope!")
+                this.startBuilder {
+                    this.addReturnStatement {
+                        val returnStatement = functionDeclNode.codeBlock.returnStatement
+                        when(returnStatement.expression){
+                            is IntegerLiteralNode -> {
+                                createInt32Value(returnStatement.expression.integer)
                             }
-                            val symbolNodeReference = functionDeclNode.scope!!.getSymbol(returnStatement.expression.ident.identifier)!!
-                            when(symbolNodeReference){
-                                is Symbol.FunctionParamSymbol -> {
-                                    this.function.getParam(symbolNodeReference.paramIndex)
-                                }
-                                is Symbol.VarSymbol -> {
-                                    this@createFunction.localVariables.find {
-                                        it.name == symbolNodeReference.symbol.identifier
-                                    }?.value ?: this@createFunction.module.getGlobalReference(symbolNodeReference.symbol.identifier)!!
-                                }
-                                else -> throw IllegalArgumentException("Unrecognized symbol reference")
+                            is DecimalLiteralNode -> {
+                                createFloatValue(returnStatement.expression.float)
                             }
+                            is StringLiteralNode -> {
+                                val stringContent = this@ASTToLLVM.parseStringLiteralNode(returnStatement.expression)
+                                createStringValue(stringContent)
+                            }
+                            is ValueReferenceNode -> {
+                                if(!functionDeclNode.scope!!.doesSymbolExist(returnStatement.expression.ident.identifier)){
+                                    throw IllegalArgumentException("Symbol ${returnStatement.expression.ident.identifier} does not exists in current scope!")
+                                }
+                                val symbolNodeReference = functionDeclNode.scope!!.getSymbol(returnStatement.expression.ident.identifier)!!
+                                when(symbolNodeReference){
+                                    is Symbol.FunctionParamSymbol -> {
+                                        this@addBlock.function.getParam(symbolNodeReference.paramIndex)
+                                    }
+                                    is Symbol.VarSymbol -> {
+                                        val symbolName = symbolNodeReference.symbol.identifier
+                                        val varRef = this@createFunction.localVariables.find{ it.name == symbolName } ?:
+                                        this@createFunction.module.getGlobalReference(symbolNodeReference.symbol.identifier)!!
+                                        var retStatement: Value = varRef.value!!
+                                        if(varRef.type is Type.ArrayType){
+                                            retStatement = this.buildGetElementPointer(varRef){
+                                                retStatement
+                                            }
+                                        }
+                                        retStatement
+                                    }
+                                    else -> throw IllegalArgumentException("Unrecognized symbol reference")
+                                }
+                            }
+                            else -> throw IllegalArgumentException("Unrecognized return value")
                         }
-                        else -> throw IllegalArgumentException("Unrecognized return value")
                     }
+
                 }
             }
         }

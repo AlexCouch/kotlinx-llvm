@@ -45,11 +45,9 @@ class Function(val name: String, val module: Module){
         }
     }
 
-    fun addBlock(name: String, block: BasicBlock.(LLVMBuilderRef)->Unit){
+    fun addBlock(name: String, block: BasicBlock.()->Unit){
         val basicblock = BasicBlock(name, this)
-        val builder = LLVM.LLVMCreateBuilder()
-        LLVM.LLVMPositionBuilderAtEnd(builder, basicblock.ref)
-        basicblock.block(builder)
+        basicblock.block()
     }
 }
 

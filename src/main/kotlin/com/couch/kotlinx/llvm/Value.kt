@@ -62,7 +62,7 @@ fun createStringValue(string: String) = object : Value {
     }
 
 fun createReferenceValue(valueToReference: Value) = object : Value{
-    override val type: Type = Type.PointerType(LLVM.LLVMTypeOf(valueToReference.value))
+    override val type: Type = Type.PointerType(valueToReference.type)
     override val value: LLVMValueRef = valueToReference.value
 }
 
