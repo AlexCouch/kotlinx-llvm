@@ -10,12 +10,17 @@ class AdditionInstruction{
     var right: Value = NoneValue
 }
 
-fun Builder.addAdditionInstruction(name: String, block: AdditionInstruction.()->Unit){
+fun Builder.addAdditionInstruction(name: String, block: AdditionInstruction.()->Unit): Value{
     val additionInstruction = AdditionInstruction()
     additionInstruction.block()
-    val builder = LLVM.LLVMCreateBuilder()
-    LLVM.LLVMBuildAdd(builder, additionInstruction.left.value, additionInstruction.right.value, name)
+    val add = LLVM.LLVMBuildAdd(this.builder, additionInstruction.left.value, additionInstruction.right.value, name)
+    return object : Value{
+        override val type: Type
+            get() = additionInstruction.left.type
+        override val value: LLVMValueRef
+            get() = add
 
+    }
 }
 
 fun Builder.buildGetElementPointer(tempVarName: String, block: ()->Value): Value{
@@ -25,7 +30,6 @@ fun Builder.buildGetElementPointer(tempVarName: String, block: ()->Value): Value
     }
     val instrs = arrayListOf(LLVM.LLVMConstInt(LLVM.LLVMInt32Type(), 0, 0))
     val elementPtr = LLVM.LLVMBuildGEP(builder, block().value, PointerPointer(*instrs.toTypedArray()), 1, "${tempVarName}_ref")
-    println(LLVM.LLVMPrintValueToString(elementPtr).string)
     return createReferenceValue(object : Value{
         override val type: Type = value.type
         override val value: LLVMValueRef = elementPtr
@@ -33,7 +37,7 @@ fun Builder.buildGetElementPointer(tempVarName: String, block: ()->Value): Value
 }
 
 fun Builder.buildBitcast(source: Value, dest: Type, name: String): Value{
-    val tempCast = LLVM.LLVMBuildBitCast(builder, source.value, Type.PointerType(Type.Int8Type()).llvmType, name)
+    val tempCast = LLVM.LLVMBuildBitCast(builder, source.value, dest.llvmType, name)
     return object : Value{
         override val type: Type = dest
         override val value: LLVMValueRef = tempCast
