@@ -80,7 +80,7 @@ class ASTToLLVM{
     fun convertTypeIdentifier(identifierNode: IdentifierNode): Type = when(identifierNode.identifier){
             "Int" -> Type.Int32Type()
             "Float" -> Type.FloatType()
-            "String" -> Type.PointerType(Type.Int8Type().llvmType)
+            "String" -> Type.PointerType(Type.Int8Type())
             else -> Type.VoidType()
     }
 
