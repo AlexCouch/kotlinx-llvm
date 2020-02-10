@@ -28,6 +28,28 @@ test.ll will show you the result of the current llvm dsl test.
 - [ ] Metadata
 - [ ] ...
 
+## Examples
+Toylang File:
+```rust
+let test = "Hello";
+
+fn testFunc(a: Float): String{
+    return test;
+}
+```
+Compiles to:
+```llvm
+; ModuleID = 'test.bc'
+source_filename = "test.toy"
+
+@test = global [6 x i8] c"Hello\00"
+
+define i8* @testFunc(float) {
+local_testFunc_block:
+  ret i8* getelementptr inbounds ([6 x i8], [6 x i8]* @test, i32 0, i32 0)
+}
+```
+
 ## Contributing
 If you would like to contribute you must satisfy these requirements:
 
