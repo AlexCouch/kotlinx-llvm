@@ -13,8 +13,14 @@ fun main(){
             createInt32Value(5)
         }
 
-        createFunction("testFunc"){
+        createFunction("main"){
             this.returnType = Type.Int32Type()
+            /*this.createFunctionParam("argc"){
+                Type.Int32Type()
+            }
+            this.createFunctionParam("argv"){
+                Type.PointerType(Type.PointerType(Type.Int8Type()))
+            }*/
             this.addBlock("test_block_1"){
                 this.startBuilder {
                     val printfFuncType = LLVM.LLVMFunctionType(Type.Int32Type().llvmType, PointerPointer(*arrayOf(Type.PointerType(Type.Int8Type()).llvmType)), 1, 1)
@@ -27,11 +33,14 @@ fun main(){
                     }
                     val gepCast = this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "gepCast")
                     LLVM.LLVMBuildCall(this.builder, printfFunc, gepCast.value, 1, BytePointer(""))
-                    this.addReturnStatement {
+                    /*this.addReturnStatement {
                         this.addAdditionInstruction("addOp"){
                             this.left = this@startBuilder.buildBitcast(this@buildModule.getGlobalReference(globalVar.name)!!.value!!, Type.Int32Type(), "addBitcast")
                             this.right = createInt32Value(10)
                         }
+                    }*/
+                    this.addReturnStatement {
+                        createInt32Value(0)
                     }
                 }
             }

@@ -44,11 +44,12 @@ fun Builder.buildBitcast(source: Value, dest: Type, name: String): Value{
     }
 }
 
-fun Builder.addReturnStatement(block: Builder.()->Value) {
+fun Builder.addReturnStatement(block: Builder.()->Value?) {
     val ret = block()
-    if(ret.type is Type.VoidType){
-        LLVM.LLVMBuildRetVoid(this.builder)
-    }else{
-        LLVM.LLVMBuildRet(this.builder, ret.value)
+    when{
+        ret == null -> LLVM.LLVMBuildRetVoid(this.builder)
+        ret.type is Type.VoidType -> LLVM.LLVMBuildRetVoid(this.builder)
+        else -> LLVM.LLVMBuildRet(this.builder, ret.value)
+
     }
 }
