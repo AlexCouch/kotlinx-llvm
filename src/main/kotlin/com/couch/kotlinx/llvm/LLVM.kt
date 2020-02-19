@@ -8,7 +8,7 @@ import org.bytedeco.llvm.global.LLVM
 fun main(){
     val module = buildModule("test"){
         LLVM.LLVMSetDataLayout(this.module, "e-m:w-i64:64-f80:128-n8:16:32:64-S128")
-        LLVM.LLVMSetTarget(this.module, "x86_64-w64-windows-gnu")
+        LLVM.LLVMSetTarget(this.module, "x86_64-pc-windows-msvc19.23.28106")
         val globalVar = createGlobalVariable("testVar", Type.Int32Type()){
             createInt32Value(5)
         }
