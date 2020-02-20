@@ -53,6 +53,15 @@ class Function(val name: String, val module: Module){
         }
     }
 
+    fun getParamByName(name: String): Value{
+        val index = this.params.keys.indexOf(name)
+        val paramRef = LLVM.LLVMGetParam(this.functionRef, index)
+        return object : Value{
+            override val type: Type = this@Function.params.values.withIndex().find { (idx, _) -> idx == index }?.value!!
+            override val value: LLVMValueRef = paramRef
+        }
+    }
+
     fun addBlock(name: String, block: BasicBlock.()->Unit){
         val basicblock = BasicBlock(name, this)
         basicblock.block()

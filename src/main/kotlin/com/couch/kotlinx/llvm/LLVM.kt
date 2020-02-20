@@ -21,6 +21,26 @@ fun main(){
             }
         }
 
+        val add = this.createFunction("add"){
+            this.returnType = Type.Int32Type()
+            this.createFunctionParam("x"){
+                Type.Int32Type()
+            }
+            this.createFunctionParam("y"){
+                Type.Int32Type()
+            }
+            this.addBlock("entry"){
+                this.startBuilder {
+                    this.addReturnStatement {
+                        this.addAdditionInstruction("add_res"){
+                            this.left = this@addBlock.function.getParamByName("x")
+                            this.right = this@addBlock.function.getParamByName("y")
+                        }
+                    }
+                }
+            }
+        }
+
         createFunction("main"){
             this.returnType = Type.Int32Type()
             this.addBlock("test_block_1"){
@@ -33,16 +53,15 @@ fun main(){
                     val gep = this.buildGetElementPointer("messageGEP"){
                         message.value
                     }
-                    val add = createLocalVariable("addRes", Type.Int32Type()){
-                        this.addAdditionInstruction("add_intstr"){
-                            this.left = createReferenceValue(globalVar.value)
-                            this.right = createInt32Value(10)
+                    val addVar = createLocalVariable("addCallRes", Type.Int32Type()){
+                        this.buildFunctionCall("addFuncCall", add){
+                            arrayOf(createInt32Value(10), globalVar.value)
                         }
                     }
                     val gepCast = this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "gepCast")
 //                    LLVM.LLVMBuildCall(this.builder, printfFunc, PointerPointer(*arrayOf(gepCast.value, add.value.value)), 2, "call")
                     this.buildFunctionCall("call", printf){
-                        val addValue = this.buildLoad(add.value, "")
+                        val addValue = this.buildLoad(addVar.value, "")
                         arrayOf(gepCast, addValue)
                     }
                     this.addReturnStatement {
