@@ -28,7 +28,7 @@ class Builder{
 }
 
 /**
- * Starting building intermediate representation without a basic block.
+ * Starting building intermediate representation inside a basic block.
  *
  * You can use the same builder for multiple instructions
  */

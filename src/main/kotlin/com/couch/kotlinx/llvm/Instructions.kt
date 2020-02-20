@@ -36,11 +36,42 @@ fun Builder.buildGetElementPointer(tempVarName: String, block: ()->Value): Value
     })
 }
 
+fun Builder.buildFunctionCall(name: String, function: Function, block: Builder.()->Array<Value>): Value{
+    val args = block()
+    val call = LLVM.LLVMBuildCall(this.builder, function.functionRef, PointerPointer(*args.map { it.value }.toTypedArray()), args.size, name)
+    return object : Value{
+        override val type: Type
+            get() = Type.CustomType(LLVM.LLVMTypeOf(call))
+        override val value: LLVMValueRef
+            get() = call
+    }
+}
+
 fun Builder.buildBitcast(source: Value, dest: Type, name: String): Value{
     val tempCast = LLVM.LLVMBuildBitCast(builder, source.value, dest.llvmType, name)
     return object : Value{
         override val type: Type = dest
         override val value: LLVMValueRef = tempCast
+    }
+}
+
+fun Builder.buildPtrToInt(sourcePtr: Value, dest: Type, name: String): Value{
+    val ptrToInt = LLVM.LLVMBuildPtrToInt(this.builder, sourcePtr.value, dest.llvmType, name)
+    return object : Value{
+        override val type: Type
+            get() = dest
+        override val value: LLVMValueRef
+            get() = ptrToInt
+    }
+}
+
+fun Builder.buildLoad(ptr: Value, name: String): Value{
+    val loaded = LLVM.LLVMBuildLoad(this.builder, ptr.value, name)
+    return object : Value{
+        override val type: Type
+            get() = Type.CustomType(LLVM.LLVMTypeOf(loaded))
+        override val value: LLVMValueRef
+            get() = loaded
     }
 }
 

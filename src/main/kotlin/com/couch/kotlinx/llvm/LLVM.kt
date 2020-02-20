@@ -10,35 +10,41 @@ fun main(){
         LLVM.LLVMSetDataLayout(this.module, "e-m:w-i64:64-f80:128-n8:16:32:64-S128")
         LLVM.LLVMSetTarget(this.module, "x86_64-pc-windows-msvc19.23.28106")
         val globalVar = createGlobalVariable("testVar", Type.Int32Type()){
-            createInt32Value(5)
+            createInt32Value(10)
+        }
+
+        val printf = this.createFunction("printf"){
+            this.returnType = Type.Int32Type()
+            this.vararg = true
+            this.createFunctionParam("argc"){
+                Type.PointerType(Type.Int8Type())
+            }
         }
 
         createFunction("main"){
             this.returnType = Type.Int32Type()
-            /*this.createFunctionParam("argc"){
-                Type.Int32Type()
-            }
-            this.createFunctionParam("argv"){
-                Type.PointerType(Type.PointerType(Type.Int8Type()))
-            }*/
             this.addBlock("test_block_1"){
                 this.startBuilder {
-                    val printfFuncType = LLVM.LLVMFunctionType(Type.Int32Type().llvmType, PointerPointer(*arrayOf(Type.PointerType(Type.Int8Type()).llvmType)), 1, 1)
-                    val printfFunc = LLVM.LLVMAddFunction(this@buildModule.module, "printf", printfFuncType)
-                    val message = createLocalVariable("message", Type.ArrayType(Type.Int8Type(), "message".length + 1)){
-                        createStringValue("message")
+//                    val printfFuncType = LLVM.LLVMFunctionType(Type.Int32Type().llvmType, PointerPointer(*arrayOf(Type.PointerType(Type.Int8Type()).llvmType)), 1, 1)
+//                    val printfFunc = LLVM.LLVMAddFunction(this@buildModule.module, "printf", printfFuncType)
+                    val message = createLocalVariable("message", Type.ArrayType(Type.Int8Type(), "%d".length + 1)){
+                        createStringValue("%d")
                     }
                     val gep = this.buildGetElementPointer("messageGEP"){
                         message.value
                     }
-                    val gepCast = this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "gepCast")
-                    LLVM.LLVMBuildCall(this.builder, printfFunc, gepCast.value, 1, BytePointer(""))
-                    /*this.addReturnStatement {
-                        this.addAdditionInstruction("addOp"){
-                            this.left = this@startBuilder.buildBitcast(this@buildModule.getGlobalReference(globalVar.name)!!.value!!, Type.Int32Type(), "addBitcast")
+                    val add = createLocalVariable("addRes", Type.Int32Type()){
+                        this.addAdditionInstruction("add_intstr"){
+                            this.left = createReferenceValue(globalVar.value)
                             this.right = createInt32Value(10)
                         }
-                    }*/
+                    }
+                    val gepCast = this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "gepCast")
+//                    LLVM.LLVMBuildCall(this.builder, printfFunc, PointerPointer(*arrayOf(gepCast.value, add.value.value)), 2, "call")
+                    this.buildFunctionCall("call", printf){
+                        val addValue = this.buildLoad(add.value, "")
+                        arrayOf(gepCast, addValue)
+                    }
                     this.addReturnStatement {
                         createInt32Value(0)
                     }
