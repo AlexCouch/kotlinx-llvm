@@ -1,15 +1,14 @@
 package com.couch.kotlinx
 
 import com.couch.kotlinx.ast.IdentifierNode
-import com.strumenta.kolasu.model.Derived
-import com.strumenta.kolasu.model.Link
-import com.strumenta.kolasu.model.Node
-import com.strumenta.kolasu.model.walkAncestors
+import com.couch.kotlinx.llvm.Function
+import com.couch.kotlinx.llvm.Variable
+import com.strumenta.kolasu.model.*
 
-sealed class Symbol(open val symbol: IdentifierNode){
-    data class FunctionParamSymbol(override val symbol: IdentifierNode, val paramIndex: Int): Symbol(symbol)
-    data class FunctionDeclSymbol(override val symbol: IdentifierNode): Symbol(symbol)
-    data class VarSymbol(override val symbol: IdentifierNode): Symbol(symbol)
+sealed class Symbol(open val symbol: String){
+    data class FunctionParamSymbol(override val symbol: String, val paramIndex: Int): Symbol(symbol)
+    data class FunctionDeclSymbol(override val symbol: String, var function: Function? = null): Symbol(symbol)
+    data class VarSymbol(override val symbol: String, var variable: Variable? = null): Symbol(symbol)
 }
 
 sealed class Scope: Node(){
@@ -22,9 +21,9 @@ sealed class Scope: Node(){
     fun doesSymbolExist(identifier: String): Boolean{
         var symbolFound = false
         this.symbols.forEach{
-            if(it.symbol.identifier != identifier) {
-                this.walkAncestors().forEach {
-                    val parentScope = it as Scope
+            if(it.symbol != identifier) {
+                val parentScope = this.parent as? Scope
+                parentScope?.symbols?.forEach {
                     symbolFound = parentScope.doesSymbolExist(identifier)
 
                 }
@@ -35,10 +34,15 @@ sealed class Scope: Node(){
         return symbolFound
     }
 
+    fun addChildScope(scope: Scope){
+        this.childScopes.add(scope)
+        this.assignParents()
+    }
+
     fun getSymbol(identifier: String): Symbol?{
         var symbolNodeRef: Symbol? = null
         this.symbols.withIndex().forEach{(idx, it) ->
-            if(it.symbol.identifier == identifier) {
+            if(it.symbol == identifier) {
                 symbolNodeRef = symbols[idx]
             }
             this.walkAncestors().forEach {

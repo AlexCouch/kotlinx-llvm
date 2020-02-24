@@ -22,20 +22,19 @@ class GeneralParsingStage{
                 }
             }
         }
-        this.startScope.assignParents()
         rootNode.scope = this.startScope
-
+        rootNode.scope!!.assignParents()
     }
 
-    fun createLetSymbol(letNode: LetNode): Symbol = Symbol.VarSymbol(letNode.identifier)
+    fun createLetSymbol(letNode: LetNode): Symbol = Symbol.VarSymbol(letNode.identifier.identifier)
 
     fun parseFunctionDeclNode(functionDeclNode: FunctionDeclNode){
-        this.currentScope.symbols.add(Symbol.FunctionDeclSymbol(functionDeclNode.identifier))
+        this.currentScope.symbols.add(Symbol.FunctionDeclSymbol(functionDeclNode.identifier.identifier))
         val newScope = Scope.FunctionScope()
-        this.startScope.childScopes.add(newScope)
+        this.startScope.addChildScope(newScope)
         this.currentScope = newScope
         functionDeclNode.params.withIndex().forEach {(idx, it) ->
-            this.currentScope.symbols.add(Symbol.FunctionParamSymbol(it.identifier, idx))
+            this.currentScope.symbols.add(Symbol.FunctionParamSymbol(it.identifier.identifier, idx))
         }
         functionDeclNode.codeBlock.statements.forEach{
             when(it){

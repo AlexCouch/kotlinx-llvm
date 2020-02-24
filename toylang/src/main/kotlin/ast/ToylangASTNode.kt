@@ -28,6 +28,7 @@ typealias CodeblockNode = ToylangASTNode.ToylangASTFunctionCodeblockNode
 typealias FunctionTypeNode = ToylangASTNode.ToylangASTFunctionTypeNode
 typealias ReturnStatementNode = ToylangASTNode.ToylangASTStatementNode.ToylangASTReturnStatement
 typealias NoneExpressionNode = ToylangASTNode.ToylangASTStatementNode.ToylangASTExpressionNode.ToylangASTNoneExpression
+typealias FunctionCallNode = ToylangASTNode.ToylangASTStatementNode.ToylangASTExpressionNode.ToylangASTFunctionCallNode
 
 interface ScopeProvider{
     var scope: Scope?
@@ -74,6 +75,7 @@ sealed class ToylangASTNode: Node(){
             }
             class ToylangASTNoneExpression: ExpressionNode()
             class ToylangASTReferenceNode: ExpressionNode()
+            class ToylangASTFunctionCallNode(val name: String, val args: List<ExpressionNode>): ExpressionNode()
         }
         data class ToylangASTFunctionDeclarationNode(
                 val identifier: IdentifierNode,

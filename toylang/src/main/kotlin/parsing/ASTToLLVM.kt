@@ -1,17 +1,36 @@
 package com.couch.kotlinx.parsing
 
+import com.couch.kotlinx.Scope
 import com.couch.kotlinx.Symbol
 import com.couch.kotlinx.ast.*
 import com.couch.kotlinx.llvm.*
+import com.couch.kotlinx.llvm.Function
 import com.strumenta.kolasu.model.walkChildren
 import org.bytedeco.llvm.global.LLVM
 import kotlin.IllegalStateException
 
 class ASTToLLVM{
     fun startGeneratingLLVM(moduleName: String, rootNode: RootNode) = buildModule(moduleName){
+        rootNode.scope!!.symbols.add(Symbol.FunctionDeclSymbol("println", this.createFunction("printf"){
+            this.returnType = Type.Int32Type()
+            this.vararg = true
+            this.createFunctionParam("argc"){
+                Type.PointerType(Type.Int8Type())
+            }
+        }))
             rootNode.walkChildren().forEach {
                 when(it){
-                    is LetNode -> this.globalVariables.add(this.parseLetNode(it))
+                    is LetNode -> {
+                        val variable = this.parseLetNode(it)
+                        this.globalVariables.add(variable)
+                        if(rootNode.scope!!.doesSymbolExist(variable.name)){
+                            val symbol = rootNode.scope!!.getSymbol(variable.name)!!
+                            if(symbol !is Symbol.VarSymbol){
+                                throw IllegalStateException("Symbol ${variable.name} is not a variable symbol")
+                            }
+                            symbol.variable = variable
+                        }
+                    }
                     is FunctionDeclNode -> this.parseFunctionDeclNode(it)
                 }
             }
@@ -61,7 +80,7 @@ class ASTToLLVM{
         }.joinToString()
     }
 
-    fun BasicBlock.parseLocalVariableNode(letNode: LetNode): Variable{
+    fun Builder.parseLocalVariableNode(letNode: LetNode): Variable{
         return when(letNode.assignment.expression){
             is IntegerLiteralNode -> this.createLocalVariable(letNode.identifier.identifier, Type.Int32Type()){
                 createInt32Value(letNode.assignment.expression.integer)
@@ -84,6 +103,97 @@ class ASTToLLVM{
             else -> Type.VoidType()
     }
 
+    fun Builder.parseFunctionCall(functionCallNode: FunctionCallNode, function: Function, scope: Scope): Value{
+        val fnName = functionCallNode.name
+        if(scope.doesSymbolExist(fnName)){
+            val fnBeingCalled = scope.getSymbol(fnName)!!
+            if(fnBeingCalled !is Symbol.FunctionDeclSymbol){
+                throw IllegalStateException("Symbol $fnName is not a function name")
+            }
+            if(fnBeingCalled.function == null){
+                throw IllegalStateException("Could not recognize")
+            }
+            return this.buildFunctionCall("${fnName}_call", fnBeingCalled.function!!){
+                functionCallNode.args.map{
+                    when(it){
+                        is ValueReferenceNode -> {
+                            createReferenceValue(this.parseExpressionNode(it, function, scope))
+                        }
+                        is IntegerLiteralNode -> {
+                            createInt32Value(it.integer)
+                        }
+                        is DecimalLiteralNode -> {
+                            createFloatValue(it.float)
+                        }
+                        is StringLiteralNode -> {
+                            createStringValue(parseStringLiteralNode(it))
+                        }
+                        is FunctionCallNode -> {
+                            this.parseFunctionCall(it, function, scope)
+                        }
+                        else -> throw IllegalArgumentException("Could not parse function call")
+                    }
+                }.toTypedArray()
+            }
+        }
+        throw IllegalStateException("Symbol $fnName does not exist in current scope")
+    }
+
+    fun Builder.parseReturnStatement(returnStatement: ReturnStatementNode, function: Function, scope: Scope){
+        this.addReturnStatement {
+            this.parseExpressionNode(returnStatement.expression, function, scope)
+        }
+    }
+
+    private fun Builder.parsePlusOperationExpression(plusOpNode: BinaryPlusOperation, function: Function, scope: Scope): Value{
+        val left = this.parseExpressionNode(plusOpNode.left, function, scope)
+        val right = this.parseExpressionNode(plusOpNode.right, function, scope)
+        return this.addAdditionInstruction(""){
+            this.left = left
+            this.right = right
+        }
+    }
+
+    private fun Builder.parseExpressionNode(expressionNode: ExpressionNode, function: Function, scope: Scope): Value{
+        return when(expressionNode){
+            is FunctionCallNode -> {
+                this.parseFunctionCall(expressionNode, function, scope)
+            }
+            is BinaryPlusOperation -> {
+                this.parsePlusOperationExpression(expressionNode, function, scope)
+            }
+            is ValueReferenceNode -> {
+                if(!scope.doesSymbolExist(expressionNode.ident.identifier)){
+                    throw IllegalArgumentException("Symbol ${expressionNode.ident.identifier} does not exists in current scope!")
+                }
+                val symbolNodeReference = scope.getSymbol(expressionNode.ident.identifier)!!
+                when(symbolNodeReference){
+                    is Symbol.FunctionParamSymbol -> {
+                        function.getParam(symbolNodeReference.paramIndex)
+                    }
+                    is Symbol.VarSymbol -> {
+                        val symbolName = symbolNodeReference.symbol
+                        val varRef = function.localVariables.find{
+                            it.name == symbolName
+                        } ?: function.module.getGlobalReference(symbolName)!!
+                        var retStatement: Value = varRef.value!!
+                        if(varRef.type is Type.ArrayType){
+                            val gep = this.buildGetElementPointer("${varRef.name}ptr_tmp"){
+                                function.module.getGlobalReference(symbolName)!!.value!!
+                            }
+                            retStatement = this.buildBitcast(gep, function.returnType, "${symbolName}_bitcast")
+                        }
+                        retStatement
+                    }
+                    else -> throw IllegalArgumentException("Unrecognized symbol reference")
+                }
+            }
+            else -> {
+                throw IllegalStateException("Could not parse expression $expressionNode")
+            }
+        }
+    }
+
     fun Module.parseFunctionDeclNode(functionDeclNode: FunctionDeclNode){
         this.createFunction(functionDeclNode.identifier.identifier){
             this.returnType = this@ASTToLLVM.convertTypeIdentifier(functionDeclNode.returnType.type.typeIdentifier)
@@ -93,59 +203,21 @@ class ASTToLLVM{
                 }
             })
             this.addBlock("local_${functionDeclNode.identifier.identifier}_block"){
-                val localVars = functionDeclNode.codeBlock.statements.map {
-                    when(it){
-                        is LetNode -> {
-                            this.parseLocalVariableNode(it)
-                        }
-                        else -> throw IllegalStateException("Could not parse local block statement for block ${this.name}")
-                    }
-                }
-                this@createFunction.localVariables.addAll(localVars)
                 this.startBuilder {
-                    this.addReturnStatement {
-                        val returnStatement = functionDeclNode.codeBlock.returnStatement
-                        when(returnStatement.expression){
-                            is IntegerLiteralNode -> {
-                                createInt32Value(returnStatement.expression.integer)
+                    functionDeclNode.codeBlock.statements.forEach {
+                        when(it){
+                            is LetNode -> {
+                                this@createFunction.localVariables.add(this.parseLocalVariableNode(it))
                             }
-                            is DecimalLiteralNode -> {
-                                createFloatValue(returnStatement.expression.float)
+                            is ExpressionNode -> {
+                                this.parseExpressionNode(it, this@createFunction, functionDeclNode.scope!!)
                             }
-                            is StringLiteralNode -> {
-                                val stringContent = this@ASTToLLVM.parseStringLiteralNode(returnStatement.expression)
-                                createStringValue(stringContent)
-                            }
-                            is ValueReferenceNode -> {
-                                if(!functionDeclNode.scope!!.doesSymbolExist(returnStatement.expression.ident.identifier)){
-                                    throw IllegalArgumentException("Symbol ${returnStatement.expression.ident.identifier} does not exists in current scope!")
-                                }
-                                val symbolNodeReference = functionDeclNode.scope!!.getSymbol(returnStatement.expression.ident.identifier)!!
-                                when(symbolNodeReference){
-                                    is Symbol.FunctionParamSymbol -> {
-                                        this@addBlock.function.getParam(symbolNodeReference.paramIndex)
-                                    }
-                                    is Symbol.VarSymbol -> {
-                                        val symbolName = symbolNodeReference.symbol.identifier
-                                        val varRef = this@createFunction.localVariables.find{
-                                            it.name == symbolName
-                                        } ?: this@createFunction.module.getGlobalReference(symbolName)!!
-                                        var retStatement: Value = varRef.value!!
-                                        if(varRef.type is Type.ArrayType){
-                                            val gep = this.buildGetElementPointer("${varRef.name}ptr_tmp"){
-                                                this@createFunction.module.getGlobalReference(symbolName)!!.value!!
-                                            }
-                                            retStatement = this.buildBitcast(gep, this@createFunction.returnType, "${symbolName}_bitcast")
-                                        }
-                                        retStatement
-                                    }
-                                    else -> throw IllegalArgumentException("Unrecognized symbol reference")
-                                }
-                            }
-                            else -> throw IllegalArgumentException("Unrecognized return value")
                         }
                     }
-
+                    val returnStatement = functionDeclNode.codeBlock.returnStatement
+                    if(returnStatement.expression !is NoneExpressionNode){
+                        this.parseReturnStatement(returnStatement, this@createFunction, functionDeclNode.scope!!)
+                    }
                 }
             }
         }

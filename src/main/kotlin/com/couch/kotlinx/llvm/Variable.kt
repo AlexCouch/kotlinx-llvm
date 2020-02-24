@@ -19,9 +19,7 @@ sealed class Variable(open val name: String, open val type: Type){
 data class AllocatedVariable(val variable: Variable)
 data class Pointer(val type: Type, val alloc: LLVMValueRef)
 
-fun BasicBlock.createLocalVariable(name: String, type: Type, block: ()->Value): Variable.NamedVariable.LocalVariable{
-    val builder = LLVM.LLVMCreateBuilder()
-    LLVM.LLVMPositionBuilderAtEnd(builder, this.ref)
+fun Builder.createLocalVariable(name: String, type: Type, block: ()->Value): Variable.NamedVariable.LocalVariable{
     val alloc = LLVM.LLVMBuildAlloca(builder, type.llvmType, name)
     val variable = Variable.NamedVariable.LocalVariable(name, type, object : Value{
         override val type: Type

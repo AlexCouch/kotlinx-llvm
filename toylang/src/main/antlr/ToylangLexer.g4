@@ -1,6 +1,6 @@
 lexer grammar ToylangLexer;
 
-channels { WHITESPACE }
+channels { WHITESPACE, COMMENT }
 
 NEWLINE             : ('\r\n' | '\r' | '\n') -> channel(WHITESPACE);
 WS                  : [\t ]+ -> channel(WHITESPACE);
@@ -19,7 +19,7 @@ DECIMALLITERAL      : ([0-9]+ 'f') | [0-9]+ '.' [0-9]+;
 PLUS                : '+';
 MINUS               : '-';
 ASTERISK            : '*';
-DIVISION            : '/';
+FORWORD_SLASH       : '/';
 ASSIGN              : '=';
 LPAREN              : '(';
 RPAREN              : ')';
@@ -31,7 +31,8 @@ RCURLBRACE          : '}';
 
 
 STRING_OPEN         : '"' -> pushMode(MODE_IN_STRING);
-
+DOC_COMMENT         : '///' ~[\r\n]*;
+LINE_COMMENT        : '//' ~[\r\n]* -> channel(COMMENT);
 UNMATCHED           : . ;
 
 mode MODE_IN_STRING;
@@ -58,7 +59,7 @@ INTERP_DECI_LIT         : ([0-9]+ 'f' | [0-9]+) '.' [0-9]+ -> type(DECIMALLITERA
 INTERP_PLUS             : '+' -> type(PLUS);
 INTERP_MINUS            : '-' -> type(MINUS);
 INTERP_ASTERISK         : '*' -> type(ASTERISK);
-INTERP_DIVISION         : '/' -> type(DIVISION);
+INTERP_DIVISION         : '/' -> type(FORWORD_SLASH);
 INTERP_LPAREN           : '(' -> type(LPAREN);
 INTERP_RPAREN           : ')' -> type(PLUS);
 

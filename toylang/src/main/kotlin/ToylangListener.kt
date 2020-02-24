@@ -22,6 +22,14 @@ class ToylangListener(): ToylangParserListener {
         }
     }
 
+    override fun enterDocComment(ctx: ToylangParser.DocCommentContext) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun exitDocComment(ctx: ToylangParser.DocCommentContext) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
     override fun enterLine(ctx: ToylangParser.LineContext) {
         prettyPrinter.append("LINE{"){
             this.indent()
@@ -90,6 +98,14 @@ class ToylangListener(): ToylangParserListener {
     }
 
     override fun exitFnType(ctx: ToylangParser.FnTypeContext) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun enterFnArgs(ctx: ToylangParser.FnArgsContext) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun exitFnArgs(ctx: ToylangParser.FnArgsContext) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
@@ -163,6 +179,14 @@ class ToylangListener(): ToylangParserListener {
     }
 
     override fun exitStringLiteral(ctx: ToylangParser.StringLiteralContext) {
+    }
+
+    override fun enterFunctionCall(ctx: ToylangParser.FunctionCallContext) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun exitFunctionCall(ctx: ToylangParser.FunctionCallContext) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override fun enterIntLiteral(ctx: ToylangParser.IntLiteralContext) {

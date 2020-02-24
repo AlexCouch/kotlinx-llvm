@@ -6,10 +6,28 @@ import com.couch.toylang.ToylangParserBaseVisitor
 import com.strumenta.kolasu.model.children
 
 class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){
-    /*override fun visit(tree: ParseTree): ToylangASTNode? {
-        println("Visiting ast")
-        return super.visit(tree)
-    }*/
+    override fun visitDocComment(ctx: ToylangParser.DocCommentContext): ToylangASTNode {
+        return super.visitDocComment(ctx)
+    }
+
+    override fun visitCodeBlockStatements(ctx: ToylangParser.CodeBlockStatementsContext): ToylangASTNode {
+        return super.visitCodeBlockStatements(ctx)
+    }
+
+    override fun visitMinusExpression(ctx: ToylangParser.MinusExpressionContext): ToylangASTNode {
+        return super.visitMinusExpression(ctx)
+    }
+
+    override fun visitFunctionCall(ctx: ToylangParser.FunctionCallContext): FunctionCallNode {
+        val fnName = ctx.IDENT()!!.symbol!!.text!!
+        val fnArgs = ctx.findFnArgs()!!
+        val exprs = fnArgs.findExpression().map {
+            this.determineExpression(it)
+        }
+
+        return FunctionCallNode(fnName, exprs)
+    }
+
     override fun visitToylangFile(ctx: ToylangParser.ToylangFileContext): ToylangASTNode.ToylangASTRootNode {
         val root = ToylangASTNode.ToylangASTRootNode()
         ctx.findLine().forEach {
@@ -24,6 +42,9 @@ class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){
             }
             ctx.findFnDeclaration() != null -> {
                 this.visitFnDeclaration(ctx.findFnDeclaration()!!)
+            }
+            ctx.findExpression() != null -> {
+                this.determineExpression(ctx.findExpression()!!)
             }
             else -> throw IllegalArgumentException("Could not parse statement")
     }
@@ -63,6 +84,9 @@ class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){
             }
             is ToylangParser.ParenExpressionContext -> {
                 this.visitParenExpression(ctx)
+            }
+            is ToylangParser.FunctionCallContext -> {
+                this.visitFunctionCall(ctx)
             }
             else -> throw IllegalArgumentException("Unknown Expression!")
         }
@@ -112,7 +136,7 @@ class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){
             ctx.ASTERISK() != null -> {
                 BinaryMultOperation(leftNode, rightNode)
             }
-            ctx.DIVISION() != null -> {
+            ctx.FORWORD_SLASH() != null -> {
                 BinaryDivOperation(leftNode, rightNode)
             }
             else -> throw IllegalArgumentException("Unknown binary operation: ${ctx.operator}")
