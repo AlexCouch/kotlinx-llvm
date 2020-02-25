@@ -1,5 +1,4 @@
 # Toylang
-------------------------------------
 Toylang is an educationally produced language designed and implemented for the sole purpose of educating the design and implementation of languages and compilers. I've found that there's very limited material on language development and compilers out there so I hope this language serves as a good example of how compilers can be made.
 
 Toylang is also being made to test run kotlinx-llvm. It currently compiles and runs simple programs with multiple functions.
