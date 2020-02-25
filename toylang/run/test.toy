@@ -1,5 +1,10 @@
-let test = "Hello";
+let test = "Hello\n";
 
-fn testFunc(){
+fn add(x: Int, y: Int): Int{
+    return x + y;
+};
+
+fn main(argc: Int){
     println(test);
-}
+    println("%d\n", add(5, 6));
+};
