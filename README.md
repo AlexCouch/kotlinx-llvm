@@ -18,7 +18,7 @@ test.ll will show you the result of the current llvm dsl test.
    - [ ] Vectors
    - [ ] Structs
 - [x] Bitcast Instruction
-- [ ] Function Call Instruction
+- [x] Function Call Instruction
 - [ ] Break Instruction
 - [ ] Switch Instruction
 - [ ] Comparisons/Conditions (If-Else-If)
