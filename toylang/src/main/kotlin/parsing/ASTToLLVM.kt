@@ -6,8 +6,8 @@ import com.couch.kotlinx.ast.*
 import com.couch.kotlinx.llvm.*
 import com.couch.kotlinx.llvm.Function
 import com.strumenta.kolasu.model.walkChildren
-import org.bytedeco.llvm.global.LLVM
 import kotlin.IllegalStateException
+import kotlin.random.Random
 
 class ASTToLLVM{
     fun startGeneratingLLVM(moduleName: String, rootNode: RootNode) = buildModule(moduleName){
@@ -31,7 +31,7 @@ class ASTToLLVM{
                             symbol.variable = variable
                         }
                     }
-                    is FunctionDeclNode -> this.parseFunctionDeclNode(it)
+                    is FunctionDeclNode -> this.parseFunctionDeclNode(it, rootNode.scope!!)
                 }
             }
         }
@@ -126,7 +126,7 @@ class ASTToLLVM{
                             createFloatValue(it.float)
                         }
                         is StringLiteralNode -> {
-                            createStringValue(parseStringLiteralNode(it))
+                            this.parseStringLiteralValue(it)
                         }
                         is FunctionCallNode -> {
                             this.parseFunctionCall(it, function, scope)
@@ -154,6 +154,18 @@ class ASTToLLVM{
         }
     }
 
+    private fun Builder.parseStringLiteralValue(expressionNode: StringLiteralNode): Value{
+        val rand = Random.nextInt()
+        val strContent = parseStringLiteralNode(expressionNode)
+        val temp = this.createLocalVariable("strLiteral_tmp$rand", Type.ArrayType(Type.Int8Type(), strContent.length + 1)){
+            createStringValue(strContent)
+        }
+        val gep = this.buildGetElementPointer("strLiteral_tmp_gep$rand"){
+            temp.value
+        }
+        return this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "strLiteral_tmp_bitcast$rand")
+    }
+
     private fun Builder.parseExpressionNode(expressionNode: ExpressionNode, function: Function, scope: Scope): Value{
         return when(expressionNode){
             is FunctionCallNode -> {
@@ -161,6 +173,9 @@ class ASTToLLVM{
             }
             is BinaryPlusOperation -> {
                 this.parsePlusOperationExpression(expressionNode, function, scope)
+            }
+            is StringLiteralNode -> {
+                this.parseStringLiteralValue(expressionNode)
             }
             is ValueReferenceNode -> {
                 if(!scope.doesSymbolExist(expressionNode.ident.identifier)){
@@ -176,14 +191,14 @@ class ASTToLLVM{
                         val varRef = function.localVariables.find{
                             it.name == symbolName
                         } ?: function.module.getGlobalReference(symbolName)!!
-                        var retStatement: Value = varRef.value!!
+                        var refStatement: Value = varRef.value!!
                         if(varRef.type is Type.ArrayType){
                             val gep = this.buildGetElementPointer("${varRef.name}ptr_tmp"){
                                 function.module.getGlobalReference(symbolName)!!.value!!
                             }
-                            retStatement = this.buildBitcast(gep, function.returnType, "${symbolName}_bitcast")
+                            refStatement = this.buildBitcast(gep, ((gep.type as Type.PointerType).type as Type.ArrayType).elementPtrType, "${symbolName}_bitcast")
                         }
-                        retStatement
+                        refStatement
                     }
                     else -> throw IllegalArgumentException("Unrecognized symbol reference")
                 }
@@ -194,8 +209,8 @@ class ASTToLLVM{
         }
     }
 
-    fun Module.parseFunctionDeclNode(functionDeclNode: FunctionDeclNode){
-        this.createFunction(functionDeclNode.identifier.identifier){
+    fun Module.parseFunctionDeclNode(functionDeclNode: FunctionDeclNode, scope: Scope){
+        val func = this.createFunction(functionDeclNode.identifier.identifier){
             this.returnType = this@ASTToLLVM.convertTypeIdentifier(functionDeclNode.returnType.type.typeIdentifier)
             this.localVariables.addAll(functionDeclNode.params.map {
                 this.createFunctionParam(it.identifier.identifier) {
@@ -217,9 +232,14 @@ class ASTToLLVM{
                     val returnStatement = functionDeclNode.codeBlock.returnStatement
                     if(returnStatement.expression !is NoneExpressionNode){
                         this.parseReturnStatement(returnStatement, this@createFunction, functionDeclNode.scope!!)
+                    }else{
+                        this.addReturnStatement {
+                            null
+                        }
                     }
                 }
             }
         }
+        scope.symbols.add(Symbol.FunctionDeclSymbol(func.name, func))
     }
 }

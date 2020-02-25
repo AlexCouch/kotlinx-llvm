@@ -20,15 +20,23 @@ sealed class Scope: Node(){
 
     fun doesSymbolExist(identifier: String): Boolean{
         var symbolFound = false
-        this.symbols.forEach{
-            if(it.symbol != identifier) {
-                val parentScope = this.parent as? Scope
-                parentScope?.symbols?.forEach {
-                    symbolFound = parentScope.doesSymbolExist(identifier)
-
-                }
-            }else{
+        forEachSymbol@ for(symbol in symbols){
+            if(symbol.symbol == identifier) {
                 symbolFound = true
+                break
+            }
+            val parentScope = this.parent as? Scope
+            for(parentSymbol in parentScope?.symbols ?: continue) {
+                symbolFound = parentScope.doesSymbolExist(identifier)
+                if(symbolFound) break@forEachSymbol
+            }
+        }
+        if(!symbolFound){
+            this.walkAncestors().forEach {
+                val scope = it as Scope
+                if(scope.doesSymbolExist(identifier)){
+                    symbolFound = true
+                }
             }
         }
         return symbolFound
@@ -41,13 +49,18 @@ sealed class Scope: Node(){
 
     fun getSymbol(identifier: String): Symbol?{
         var symbolNodeRef: Symbol? = null
-        this.symbols.withIndex().forEach{(idx, it) ->
-            if(it.symbol == identifier) {
-                symbolNodeRef = symbols[idx]
+        this.walk().forEach {
+            val scope = it as Scope
+            scope.symbols.withIndex().forEach{(idx, it) ->
+                if(it.symbol == identifier) {
+                    symbolNodeRef = symbols[idx]
+                }
             }
-            this.walkAncestors().forEach {
-                val parentScope = it as Scope
-                symbolNodeRef = parentScope.getSymbol(identifier)
+            if(symbolNodeRef == null){
+                scope.walkAncestors().forEach {
+                    val parentScope = it as Scope
+                    symbolNodeRef = parentScope.getSymbol(identifier)
+                }
             }
         }
         return symbolNodeRef

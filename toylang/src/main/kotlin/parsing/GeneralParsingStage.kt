@@ -22,6 +22,7 @@ class GeneralParsingStage{
                 }
             }
         }
+
         rootNode.scope = this.startScope
         rootNode.scope!!.assignParents()
     }
@@ -31,7 +32,7 @@ class GeneralParsingStage{
     fun parseFunctionDeclNode(functionDeclNode: FunctionDeclNode){
         this.currentScope.symbols.add(Symbol.FunctionDeclSymbol(functionDeclNode.identifier.identifier))
         val newScope = Scope.FunctionScope()
-        this.startScope.addChildScope(newScope)
+        this.currentScope.addChildScope(newScope)
         this.currentScope = newScope
         functionDeclNode.params.withIndex().forEach {(idx, it) ->
             this.currentScope.symbols.add(Symbol.FunctionParamSymbol(it.identifier.identifier, idx))
@@ -43,5 +44,6 @@ class GeneralParsingStage{
             }
         }
         functionDeclNode.scope = this.currentScope
+        this.currentScope = this.currentScope.parent as? Scope ?: this.startScope
     }
 }
