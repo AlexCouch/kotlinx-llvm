@@ -14,8 +14,18 @@ import org.bytedeco.llvm.global.LLVM
 const val DEBUG = true
 
 fun main(){
-    val testFile = CharStreams.fromFileName("test.toy")
+    val testFile = CharStreams.fromFileName("test.txt")
+    println(testFile)
+    /*val testFile = CharStreams.fromFileName("test.toy")
+    println(testFile.toString())
     val lexer = ToylangLexer(testFile)
+    *//*val testInput = CharStreams.fromString("""
+        let hello = "Hello"; 
+        fn test(){
+            printf(test);
+        };""".trimIndent())*//*
+//    println(testInput.toString())
+//    val lexer = ToylangLexer(testInput)
     val parser = ToylangParser(CommonTokenStream(lexer))
     val tree = parser.toylangFile()
 //    val listener = ToylangListener()
@@ -25,6 +35,9 @@ fun main(){
     println("About to visit ast")
     val rootNode = visitor.visit(tree)!!
     rootNode.assignParents()
+    rootNode.walkChildren().forEach {
+        println(it.debugPrint())
+    }
     val generalParsingStage = GeneralParsingStage()
     generalParsingStage.startParsing(rootNode as RootNode)
     val astToLLVM = ASTToLLVM()
@@ -33,5 +46,5 @@ fun main(){
     LLVM.LLVMVerifyModule(module.module, LLVM.LLVMAbortProcessAction, buffer)
     LLVM.LLVMDisposeMessage(buffer)
     val result = LLVM.LLVMWriteBitcodeToFile(module.module, "test.bc")
-    println(result)
+    println(result)*/
 }

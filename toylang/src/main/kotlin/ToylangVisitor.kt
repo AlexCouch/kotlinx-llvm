@@ -6,18 +6,6 @@ import com.couch.toylang.ToylangParserBaseVisitor
 import com.strumenta.kolasu.model.children
 
 class ToylangVisitor: ToylangParserBaseVisitor<ToylangASTNode>(){
-    override fun visitDocComment(ctx: ToylangParser.DocCommentContext): ToylangASTNode {
-        return super.visitDocComment(ctx)
-    }
-
-    override fun visitCodeBlockStatements(ctx: ToylangParser.CodeBlockStatementsContext): ToylangASTNode {
-        return super.visitCodeBlockStatements(ctx)
-    }
-
-    override fun visitMinusExpression(ctx: ToylangParser.MinusExpressionContext): ToylangASTNode {
-        return super.visitMinusExpression(ctx)
-    }
-
     override fun visitFunctionCall(ctx: ToylangParser.FunctionCallContext): FunctionCallNode {
         val fnName = ctx.IDENT()!!.symbol!!.text!!
         val fnArgs = ctx.findFnArgs()!!

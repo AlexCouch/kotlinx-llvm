@@ -2,10 +2,10 @@ parser grammar ToylangParser;
 
 options { tokenVocab=ToylangLexer; }
 
-toylangFile             : lines=line+ ;
+toylangFile             : lines=line* EOF;
 
 docComment              : DOC_COMMENT;
-line                    : statement(NEWLINE* | EOF);
+line                    : statement NEWLINE*;
 
 statement               : (letDeclaration | fnDeclaration | expression)? SEMICOLON;
 
