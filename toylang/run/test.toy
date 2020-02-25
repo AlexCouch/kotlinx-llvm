@@ -4,7 +4,13 @@ fn add(x: Int, y: Int): Int{
     return x + y;
 };
 
+fn calcAverage(x: Int, y: Int, z: Int): Int{
+    let mut sum = x + y + z;
+    return sum / 3;
+};
+
 fn main(argc: Int){
     println(test);
     println("%d\n", add(5, 6));
+    println("%d\n", calcAverage(5, 3, 6));
 };
