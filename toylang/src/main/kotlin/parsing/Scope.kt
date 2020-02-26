@@ -1,27 +1,23 @@
-package com.couch.kotlinx
+package com.couch.kotlinx.parsing
 
-import com.couch.kotlinx.ast.IdentifierNode
-import com.couch.kotlinx.llvm.Function
-import com.couch.kotlinx.llvm.Variable
+import com.couch.kotlinx.ast.ToylangASTNode
 import com.strumenta.kolasu.model.*
 
-sealed class Symbol(open val symbol: String){
-    data class FunctionParamSymbol(override val symbol: String, val paramIndex: Int): Symbol(symbol)
-    data class FunctionDeclSymbol(override val symbol: String, var function: Function? = null): Symbol(symbol)
-    data class VarSymbol(override val symbol: String, var variable: Variable? = null): Symbol(symbol)
+interface Symbol{
+    val symbolName: String
+    val node: ToylangASTNode
 }
 
-sealed class Scope: Node(){
+abstract class Scope: Node(){
     val symbols = arrayListOf<Symbol>()
     val childScopes = arrayListOf<Scope>()
 
-    class GlobalScope: Scope()
-    class FunctionScope: Scope()
+
 
     fun doesSymbolExist(identifier: String): Boolean{
         var symbolFound = false
         forEachSymbol@ for(symbol in symbols){
-            if(symbol.symbol == identifier) {
+            if(symbol.symbolName == identifier) {
                 symbolFound = true
                 break
             }
@@ -52,7 +48,7 @@ sealed class Scope: Node(){
         this.walk().forEach {
             val scope = it as Scope
             scope.symbols.withIndex().forEach{(idx, it) ->
-                if(it.symbol == identifier) {
+                if(it.symbolName == identifier) {
                     symbolNodeRef = symbols[idx]
                 }
             }

@@ -1,8 +1,7 @@
 package com.couch.kotlinx
 
 import com.couch.kotlinx.ast.*
-import com.couch.kotlinx.llvm.*
-import com.couch.kotlinx.parsing.ASTToLLVM
+import com.couch.kotlinx.parsing.llvm.ASTToLLVM
 import com.couch.kotlinx.parsing.GeneralParsingStage
 import com.couch.toylang.ToylangLexer
 import com.couch.toylang.ToylangParser
@@ -29,7 +28,7 @@ fun main(){
 //    val parseTreeWalker = ParseTreeWalker()
 //    parseTreeWalker.walk(listener, tree)
     val visitor = ToylangVisitor()
-    println("About to visit ast")
+    println("About to visit parsing.ast")
     val rootNode = visitor.visit(tree)!!
     rootNode.assignParents()
     rootNode.walkChildren().forEach {

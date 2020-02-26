@@ -1,7 +1,7 @@
-package com.couch.kotlinx.parsing
+package com.couch.kotlinx.parsing.llvm
 
-import com.couch.kotlinx.Scope
-import com.couch.kotlinx.Symbol
+import com.couch.kotlinx.parsing.Scope
+import com.couch.kotlinx.parsing.Symbol
 import com.couch.kotlinx.ast.*
 import com.couch.kotlinx.llvm.*
 import com.couch.kotlinx.llvm.Function
@@ -110,10 +110,7 @@ class ASTToLLVM{
             if(fnBeingCalled !is Symbol.FunctionDeclSymbol){
                 throw IllegalStateException("Symbol $fnName is not a function name")
             }
-            if(fnBeingCalled.function == null){
-                throw IllegalStateException("Could not recognize")
-            }
-            return this.buildFunctionCall("${fnName}_call", fnBeingCalled.function!!){
+            return this.buildFunctionCall("${fnName}_call", fnBeingCalled.node){
                 functionCallNode.args.map{
                     when(it){
                         is ValueReferenceNode -> {

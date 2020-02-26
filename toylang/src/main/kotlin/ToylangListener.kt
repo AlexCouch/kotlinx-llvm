@@ -1,5 +1,6 @@
 package com.couch.kotlinx
 
+import com.couch.kotlinx.parsing.Scope
 import com.couch.toylang.ToylangParser
 import com.couch.toylang.ToylangParserListener
 import org.antlr.v4.kotlinruntime.ParserRuleContext
