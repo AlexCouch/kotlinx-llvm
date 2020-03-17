@@ -1,31 +1,78 @@
-package com.couch.kotlinx.parsing.p1
+package parsing.p1
 
+import com.couch.kotlinx.ast.Location
 import com.couch.kotlinx.ast.ToylangASTNode
+import com.couch.kotlinx.parsing.p1.Context
+import com.couch.kotlinx.parsing.p1.FunctionContext
+import com.couch.kotlinx.parsing.p1.GlobalContext
+import com.couch.kotlinx.parsing.p1.ProvidesContext
 
-sealed class ToylangP1ASTNode: ToylangASTNode(){
-    data class RootNode(val statements: List<StatementNode>, override val context: Context): ProvidesContext
-    data class TypeAnnotation(val typeName: String): ToylangP1ASTNode()
-    sealed class StatementNode: ToylangP1ASTNode(){
-        data class VariableNode(val identifier: String, val type: TypeAnnotation, val assignment: AssignmentNode): ToylangASTNode()
-        data class AssignmentNode(val expression: ExpressionNode): ToylangASTNode()
-        sealed class ExpressionNode: ToylangASTNode(){
-            data class StringLiteralExpression(val content: List<StringLiteralContentNode>): ExpressionNode()
-            sealed class StringLiteralContentNode: ExpressionNode(){
-                data class StringLiteralInterpolationNode(val expression: ExpressionNode): StringLiteralContentNode()
-                data class StringLiteralRawNode(val content: String): StringLiteralContentNode()
-            }
-            sealed class BinaryExpressionNode(open val left: ExpressionNode, open val right: ExpressionNode): ExpressionNode(){
-                data class PlusNode(override val left: ExpressionNode, override val right: ExpressionNode): BinaryExpressionNode(left, right)
-                data class MinusNode(override val left: ExpressionNode, override val right: ExpressionNode): BinaryExpressionNode(left, right)
-                data class DivNode(override val left: ExpressionNode, override val right: ExpressionNode): BinaryExpressionNode(left, right)
-                data class MultiplyNode(override val left: ExpressionNode, override val right: ExpressionNode): BinaryExpressionNode(left, right)
-            }
-            sealed class GroupedExpression(val innerExpression: ExpressionNode): ExpressionNode()
-            data class ValueReferenceNode(val identifier: String) : ExpressionNode()
-            data class FunctionCallNode(val identifier: String, val functionDeclNode: FunctionDeclNode): ExpressionNode()
+sealed class ToylangP1ASTNode(override val location: Location): ToylangASTNode(location){
+    data class RootNode(override val location: Location, val statements: List<StatementNode>, override val context: GlobalContext): ToylangP1ASTNode(location), ProvidesContext
+    data class TypeAnnotation(override val location: Location, val typeName: String): ToylangP1ASTNode(location)
+    sealed class StatementNode(override val location: Location): ToylangP1ASTNode(location){
+        sealed class VariableNode(
+                override val location: Location,
+                open val identifier: String,
+                open val mutable: Boolean,
+                open val type: TypeAnnotation,
+                open val assignment: AssignmentNode
+        ): StatementNode(location){
+            data class GlobalVariableNode(
+                    override val location: Location,
+                    override val identifier: String,
+                    override val mutable: Boolean,
+                    override val type: TypeAnnotation,
+                    override val assignment: AssignmentNode
+            ): VariableNode(
+                    location,
+                    identifier,
+                    mutable,
+                    type,
+                    assignment
+            )
+            data class LocalVariableNode(
+                    override val location: Location,
+                    override val identifier: String,
+                    override val mutable: Boolean,
+                    override val type: TypeAnnotation,
+                    override val assignment: AssignmentNode
+            ): VariableNode(
+                    location,
+                    identifier,
+                    mutable,
+                    type,
+                    assignment
+            )
         }
-        data class FunctionDeclNode(val identifier: String, override val context: Context): ToylangP1ASTNode(), ProvidesContext
+        data class AssignmentNode(override val location: Location, val expression: ExpressionNode): StatementNode(location)
+        sealed class ExpressionNode(override val location: Location): StatementNode(location){
+            data class IntegerLiteralExpression(override val location: Location,val integer: Int): ExpressionNode(location)
+            data class DecimalLiteralExpression(override val location: Location, val decimal: Float): ExpressionNode(location)
+            data class StringLiteralExpression(override val location: Location, val content: List<StringLiteralContentNode>): ExpressionNode(location)
+            sealed class StringLiteralContentNode(override val location: Location): ExpressionNode(location){
+                data class StringLiteralInterpolationNode(override val location: Location, val expression: ExpressionNode): StringLiteralContentNode(location)
+                data class StringLiteralRawNode(override val location: Location, val content: String): StringLiteralContentNode(location)
+            }
+            sealed class BinaryExpressionNode(override val location: Location, open val left: ExpressionNode, open val right: ExpressionNode): ExpressionNode(location){
+                data class PlusNode(override val location: Location,override val left: ExpressionNode, override val right: ExpressionNode): BinaryExpressionNode(location, left, right)
+                data class MinusNode(override val location: Location,override val left: ExpressionNode, override val right: ExpressionNode): BinaryExpressionNode(location, left, right)
+                data class DivNode(override val location: Location,override val left: ExpressionNode, override val right: ExpressionNode): BinaryExpressionNode(location, left, right)
+                data class MultiplyNode(override val location: Location,override val left: ExpressionNode, override val right: ExpressionNode): BinaryExpressionNode(location, left, right)
+            }
+            sealed class GroupedExpression(override val location: Location, val innerExpression: ExpressionNode): ExpressionNode(location)
+            data class ValueReferenceNode(override val location: Location,val identifier: String) : ExpressionNode(location)
+            data class FunctionCallNode(override val location: Location,val identifier: String, val args: List<ExpressionNode>): ExpressionNode(location)
+        }
+        data class ReturnStatementNode(override val location: Location,val expression: ExpressionNode): StatementNode(location)
+        data class FunctionDeclNode(
+                override val location: Location,
+                val identifier: String,
+                val type: TypeAnnotation,
+                val codeblock: CodeBlockNode,
+                override val context: FunctionContext
+        ): StatementNode(location), ProvidesContext
     }
-    data class FunctionParamNode(val identifier: String, val type: TypeAnnotation, val returnType: TypeAnnotation, val codeblock: CodeBlockNode): ToylangP1ASTNode()
-    data class CodeBlockNode(val statements: List<StatementNode>): ToylangP1ASTNode()
+    data class FunctionParamNode(override val location: Location, val identifier: String, val type: TypeAnnotation): ToylangP1ASTNode(location)
+    data class CodeBlockNode(override val location: Location, val statements: List<StatementNode>): ToylangP1ASTNode(location)
 }

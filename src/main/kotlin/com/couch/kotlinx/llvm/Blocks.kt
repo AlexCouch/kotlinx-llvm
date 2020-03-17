@@ -24,7 +24,7 @@ class BasicBlock(val name: String, val function: Function){
  *
  */
 class Builder{
-    internal val builder = LLVM.LLVMCreateBuilder()
+    val builder = LLVM.LLVMCreateBuilder()
 }
 
 /**
@@ -32,7 +32,7 @@ class Builder{
  *
  * You can use the same builder for multiple instructions
  */
-fun BasicBlock.startBuilder(block: Builder.()->Unit){
+inline fun BasicBlock.startBuilder(block: Builder.()->Unit){
     val builder = Builder()
     LLVM.LLVMPositionBuilderAtEnd(builder.builder, this.ref)
     builder.block()

@@ -2,11 +2,7 @@ package com.couch.kotlinx.ast
 
 import com.couch.kotlinx.parsing.Scope
 import com.strumenta.kolasu.model.Node
+import org.antlr.v4.kotlinruntime.ast.Point
 
-
-
-interface ScopeProvider{
-    var scope: Scope
-}
-
-abstract class ToylangASTNode: Node()
+data class Location(val line: Point, val column: Point)
+abstract class ToylangASTNode(open val location: Location): Node()

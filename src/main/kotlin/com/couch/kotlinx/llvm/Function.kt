@@ -62,14 +62,15 @@ class Function(val name: String, val module: Module){
         }
     }
 
-    fun addBlock(name: String, block: BasicBlock.()->Unit){
+    inline fun addBlock(name: String, block: BasicBlock.()->Unit){
         val basicblock = BasicBlock(name, this)
         basicblock.block()
     }
 }
 
-fun Module.createFunction(name: String, block: Function.()->Unit): Function{
+inline fun Module.createFunction(name: String, block: Function.()->Unit): Function{
     val function = Function(name, this)
     function.block()
+    this.functions.add(function)
     return function
 }

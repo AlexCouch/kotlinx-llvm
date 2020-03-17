@@ -9,6 +9,7 @@ import org.bytedeco.llvm.global.LLVM
 class Module(name: String){
     val module = LLVM.LLVMModuleCreateWithName(name)
     val globalVariables = arrayListOf<Variable.NamedVariable.GlobalVariable>()
+    val functions = arrayListOf<Function>()
 
     fun getGlobalReference(name: String): Variable?{
         if(this.globalVariables.find{ it.name == name } == null) return null
@@ -24,7 +25,7 @@ class Module(name: String){
     }
 }
 
-fun buildModule(name: String, block: Module.()->Unit): Module{
+inline fun buildModule(name: String, block: Module.()->Unit): Module{
     println("Building new module")
     val module = Module(name)
     module.block()

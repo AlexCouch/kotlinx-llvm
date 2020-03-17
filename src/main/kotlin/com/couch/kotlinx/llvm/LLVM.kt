@@ -1,8 +1,6 @@
 package com.couch.kotlinx.llvm
 
 import org.bytedeco.javacpp.BytePointer
-import org.bytedeco.javacpp.PointerPointer
-import org.bytedeco.llvm.LLVM.*
 import org.bytedeco.llvm.global.LLVM
 
 fun main(){
@@ -32,7 +30,7 @@ fun main(){
             this.addBlock("entry"){
                 this.startBuilder {
                     this.addReturnStatement {
-                        this.addAdditionInstruction("add_res"){
+                        this.buildAdditionInstruction("add_res"){
                             this.left = this@addBlock.function.getParamByName("x")
                             this.right = this@addBlock.function.getParamByName("y")
                         }

@@ -17,9 +17,10 @@ fnParam                 : IDENT COLON type;
 fnParams                : LPAREN ((fnParam) | (fnParam COMMA fnParam))* RPAREN;
 fnType                  : COLON type;
 fnArgs                  : LPAREN ((expression) | (expression COMMA expression))* RPAREN;
-codeBlockStatements     : statement*;
-codeBlock               : LCURLBRACE codeBlockStatements returnStatement? RCURLBRACE;
-returnStatement         : RETURN expression SEMICOLON;
+codeblockStatement      : (letDeclaration | expression | returnStatement)? SEMICOLON;
+codeBlockStatements     : block = codeblockStatement*;
+codeBlock               : LCURLBRACE codeBlockStatements RCURLBRACE;
+returnStatement         : RETURN expression;
 
 assignment              : ASSIGN expression;
 expression              : IDENT fnArgs                                                          # functionCall
