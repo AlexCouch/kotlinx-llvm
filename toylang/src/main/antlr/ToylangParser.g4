@@ -9,13 +9,13 @@ line                    : statement NEWLINE*;
 
 statement               : (letDeclaration | fnDeclaration | expression)? SEMICOLON;
 
-letDeclaration          : LET (MUT?) IDENT assignment;
+letDeclaration          : LET (MUT?) IDENT typeAnnotation? assignment;
 
-fnDeclaration           : FN IDENT fnParams fnType? codeBlock;
+typeAnnotation          : COLON type #fnType;
+fnDeclaration           : FN IDENT fnParams typeAnnotation? codeBlock;
 
 fnParam                 : IDENT COLON type;
 fnParams                : LPAREN ((fnParam) | (fnParam COMMA fnParam))* RPAREN;
-fnType                  : COLON type;
 fnArgs                  : LPAREN ((expression) | (expression COMMA expression))* RPAREN;
 codeblockStatement      : (letDeclaration | expression | returnStatement)? SEMICOLON;
 codeBlockStatements     : block = codeblockStatement*;

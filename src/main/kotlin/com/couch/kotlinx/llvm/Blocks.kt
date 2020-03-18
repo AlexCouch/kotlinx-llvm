@@ -6,6 +6,7 @@ import org.bytedeco.llvm.global.LLVM
 
 class BasicBlock(val name: String, val function: Function){
     val ref = LLVM.LLVMAppendBasicBlock(this.function.functionRef, name)
+    var hasTerminator = false
 }
 
 /**

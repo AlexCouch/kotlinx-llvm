@@ -24,14 +24,14 @@ sealed class ToylangP1ASTNode(override val location: Location): ToylangASTNode(l
                 override val location: Location,
                 open val identifier: String,
                 open val mutable: Boolean,
-                open val type: TypeAnnotation,
+                open var type: TypeAnnotation?,
                 open val assignment: AssignmentNode
         ): StatementNode(location){
             data class GlobalVariableNode(
                     override val location: Location,
                     override val identifier: String,
                     override val mutable: Boolean,
-                    override val type: TypeAnnotation,
+                    override var type: TypeAnnotation?,
                     override val assignment: AssignmentNode
             ): VariableNode(
                     location,
@@ -44,7 +44,7 @@ sealed class ToylangP1ASTNode(override val location: Location): ToylangASTNode(l
                     override val location: Location,
                     override val identifier: String,
                     override val mutable: Boolean,
-                    override val type: TypeAnnotation,
+                    override var type: TypeAnnotation?,
                     override val assignment: AssignmentNode
             ): VariableNode(
                     location,

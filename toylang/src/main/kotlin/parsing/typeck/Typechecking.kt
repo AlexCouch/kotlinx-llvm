@@ -33,7 +33,7 @@ fun ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode.findType(
         is ParserErrorResult<*> -> return ParserErrorResult(result, this.location)
         else -> ErrorResult("Unrecognized result: $result")
     }
-    if(leftCheck !== rightCheck){
+    if(leftCheck != rightCheck){
         return ErrorResult("Left and right expressions are not the same type. Left: $leftCheck; Right: $rightCheck")
     }
     return WrappedResult(leftCheck)
@@ -47,13 +47,25 @@ fun ToylangP1ASTNode.StatementNode.ExpressionNode.ValueReferenceNode.findType():
                     is WrappedResult<*> -> {
                         when(findResult.t){
                             is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> {
-                                return WrappedResult(findResult.t.type)
+                                return WrappedResult(Type(findResult.t.type.typeName))
                             }
                             is ToylangP1ASTNode.StatementNode.VariableNode ->{
-                                return WrappedResult(findResult.t.type)
+                                return if(findResult.t.type == null){
+                                    when(val typeResult = findResult.t.findType()){
+                                        is WrappedResult<*> -> {
+                                            return when(typeResult.t){
+                                                is Type -> WrappedResult(typeResult.t)
+                                                else -> ParserErrorResult(ErrorResult("Could not find type for variable: $it"), this.location)
+                                            }
+                                        }
+                                        else -> ErrorResult("No type info found for variable")
+                                    }
+                                }else{
+                                    WrappedResult(Type(findResult.t.identifier))
+                                }
                             }
                             is ToylangP1ASTNode.FunctionParamNode -> {
-                                return WrappedResult(findResult.t.type)
+                                return WrappedResult(Type(findResult.t.type.typeName))
                             }
                             else -> ErrorResult("Unrecognized symbol: ${findResult.t}")
                         }
@@ -75,10 +87,10 @@ fun ToylangP1ASTNode.StatementNode.ExpressionNode.FunctionCallNode.findType(): R
                     is WrappedResult<*> -> {
                         when(findResult.t){
                             is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> {
-                                WrappedResult(findResult.t.type)
+                                WrappedResult(Type(findResult.t.type.typeName))
                             }
                             is ToylangP1ASTNode.StatementNode.VariableNode ->{
-                                WrappedResult(findResult.t.type)
+                                WrappedResult(Type(findResult.t.type!!.typeName))
                             }
                             else -> ErrorResult("Unrecognized symbol: ${findResult.t}")
                         }
@@ -131,7 +143,21 @@ fun ToylangP1ASTNode.StatementNode.ExpressionNode.findType(): Result{
 fun ToylangP1ASTNode.StatementNode.findType(): Result{
     return when(this){
         is ToylangP1ASTNode.StatementNode.VariableNode -> {
-            this.assignment.expression.findType()
+            when(val exprTypeResult = this.assignment.expression.findType()){
+                is WrappedResult<*> -> {
+                    when(exprTypeResult.t){
+                        is Type -> {
+                            if(this.type == null){
+                                this.type = ToylangP1ASTNode.TypeAnnotation(this.location, exprTypeResult.t.identifier)
+                            }
+                            WrappedResult(exprTypeResult.t)
+                        }
+                        else -> ErrorResult("No type annotation found in expression")
+                    }
+                }
+                is ErrorResult -> ParserErrorResult(exprTypeResult, this.location)
+                else -> ErrorResult("Unrecognized result: $exprTypeResult")
+            }
         }
         is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> {
             this.codeblock.statements.map {

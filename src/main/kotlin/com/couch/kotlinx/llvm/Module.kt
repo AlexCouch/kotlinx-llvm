@@ -23,11 +23,19 @@ class Module(name: String){
         }
         return Variable.NamedVariable.GlobalVariable(name, global.type, value)
     }
+
+    fun findFunction(name: String): Function? = this.functions.find { it.name == name }
 }
 
 inline fun buildModule(name: String, block: Module.()->Unit): Module{
-    println("Building new module")
     val module = Module(name)
+    module.createFunction("printf"){
+        this.returnType = Type.Int32Type()
+        this.vararg = true
+        this.createFunctionParam("argc"){
+            Type.PointerType(Type.Int8Type())
+        }
+    }
     module.block()
     return module
 }

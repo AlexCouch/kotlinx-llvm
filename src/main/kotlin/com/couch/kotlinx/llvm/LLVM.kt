@@ -39,6 +39,38 @@ fun main(){
             }
         }
 
+        val calcAverage = this.createFunction("calcAverage"){
+            this.returnType = Type.Int32Type()
+            this.createFunctionParam("x"){
+                Type.Int32Type()
+            }
+            this.createFunctionParam("y"){
+                Type.Int32Type()
+            }
+            this.createFunctionParam("z"){
+                Type.Int32Type()
+            }
+            this.addBlock("entry"){
+                this.startBuilder {
+                    val addResult = this.createLocalVariable("addResult", Type.Int32Type()){
+                        this.buildAdditionInstruction("addVar"){
+                            this.left = this@addBlock.function.getParamByName("x")
+                            this.right = this@startBuilder.buildAdditionInstruction("rightAddVar"){
+                                this.left = this@addBlock.function.getParamByName("y")
+                                this.right = this@addBlock.function.getParamByName("z")
+                            }
+                        }
+                    }
+                    this.addReturnStatement {
+                        this.buildSDivide("divRes"){
+                            this.left = this@startBuilder.buildLoad(addResult.value, "addLoad")
+                            this.right = createInt32Value(3)
+                        }
+                    }
+                }
+            }
+        }
+
         createFunction("main"){
             this.returnType = Type.Int32Type()
             this.addBlock("test_block_1"){
@@ -56,10 +88,19 @@ fun main(){
                             arrayOf(createInt32Value(10), globalVar.value)
                         }
                     }
+                    val calcAvVar = createLocalVariable("addCallRes", Type.Int32Type()){
+                        this.buildFunctionCall("addFuncCall", add){
+                            arrayOf(createInt32Value(10), globalVar.value)
+                        }
+                    }
                     val gepCast = this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "gepCast")
 //                    LLVM.LLVMBuildCall(this.builder, printfFunc, PointerPointer(*arrayOf(gepCast.value, add.value.value)), 2, "call")
                     this.buildFunctionCall("call", printf){
                         val addValue = this.buildLoad(addVar.value, "")
+                        arrayOf(gepCast, addValue)
+                    }
+                    this.buildFunctionCall("call", printf){
+                        val addValue = this.buildLoad(calcAvVar.value, "")
                         arrayOf(gepCast, addValue)
                     }
                     this.addReturnStatement {

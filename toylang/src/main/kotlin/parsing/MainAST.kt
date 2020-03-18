@@ -13,7 +13,7 @@ sealed class ToylangMainAST(override val location: Location): ToylangASTNode(loc
                 override val location: Location,
                 val identifier: IdentifierNode,
                 val mutable: Boolean,
-                val type: TypeAnnotationNode,
+                val type: TypeAnnotationNode?,
                 val assignment: AssignmentNode
         ) : StatementNode(location)
         data class AssignmentNode(override val location: Location, val expression: ExpressionNode) : StatementNode(location)

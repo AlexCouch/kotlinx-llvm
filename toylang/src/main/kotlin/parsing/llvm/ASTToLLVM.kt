@@ -19,15 +19,6 @@ import kotlin.random.Random
 
 class ASTToLLVM{
     fun startGeneratingLLVM(moduleName: String, rootNode: ToylangP1ASTNode.RootNode): Result {
-        rootNode.context.functions.add(
-                ToylangP1ASTNode.StatementNode.FunctionDeclNode(
-                        Location(Point(1, 1), Point(1, 1)),
-                        "printf",
-                        ToylangP1ASTNode.TypeAnnotation(Location(Point(1, 1), Point(1, 1)), "Unit"),
-                        ToylangP1ASTNode.CodeBlockNode(Location(Point(1, 1), Point(1, 1)), emptyList()),
-                        FunctionContext(rootNode.context)
-                )
-        )
         return WrappedResult(buildModule(moduleName){
             rootNode.walkChildren().forEach {
                 when(it){
@@ -48,7 +39,9 @@ class ASTToLLVM{
                     is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> when(val fn = this.parseFunctionDeclNode(it, rootNode.context)){
                         is WrappedResult<*> -> {
                             when(fn.t){
-                                is Function -> fn.t
+                                is Function -> {
+                                    fn.t
+                                }
                                 null -> return ErrorResult("Function declaration parse result value came back null")
                                 else -> return ErrorResult("Unrecognized function declaration parse result value type: ${fn.t::class.qualifiedName}")
                             }
@@ -120,16 +113,18 @@ class ASTToLLVM{
     }
 
     fun Builder.parseLocalVariableNode(letNode: ToylangP1ASTNode.StatementNode.VariableNode.LocalVariableNode, function: Function, context: FunctionContext): Result{
+        if(letNode.type == null) return ParserErrorResult(ErrorResult("Variable type annotation cannot be null: $letNode"), letNode.location)
         return when(val result = context.findIdentifier(letNode.identifier)){
             is WrappedResult<*> -> {
                 when(val parseResult = parseExpressionNode(letNode.assignment.expression, null, function, context)){
                     is WrappedResult<*> -> {
                         when(parseResult.t){
                             is Value -> {
-                                WrappedResult(this.createLocalVariable(letNode.identifier, convertTypeIdentifier(letNode.type.typeName)){
+                                WrappedResult(this.createLocalVariable(letNode.identifier, convertTypeIdentifier(letNode.type!!.typeName)){
                                     parseResult.t
                                 })
                             }
+                            is Variable.NamedVariable -> WrappedResult(this.buildLoad(parseResult.t.value, letNode.identifier))
                             else -> ErrorResult("Did Expression parse result came back abnormal: $result")
                         }
                     }
@@ -155,13 +150,14 @@ class ASTToLLVM{
             is WrappedResult<*> -> {
                 when(symbol.t){
                     is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> {
-                        val fn = module?.functions?.find { it.name == fnName } ?: return ErrorResult("Function does not exist in current module context")
+                        val fn = module?.findFunction(fnName) ?: return ErrorResult("Function does not exist in current module context")
                         WrappedResult(this.buildFunctionCall("${fnName}_call", fn) {
                             functionCallNode.args.map {
                                 when(val exprResult = this.parseExpressionNode(it, module, function, context)) {
                                     is WrappedResult<*> -> {
                                         when(exprResult.t){
                                             is Value -> exprResult.t
+                                            is Variable.NamedVariable -> this.buildLoad(exprResult.t.value, "${exprResult.t.name}_load")
                                             null -> return ErrorResult("Expression parse result value came back null")
                                             else -> return ErrorResult("Unrecognized parse result value: ${exprResult.t::class.qualifiedName}")
                                         }
@@ -187,6 +183,7 @@ class ASTToLLVM{
                 is WrappedResult<*> -> {
                     when(result.t){
                         is Value -> result.t
+                        is Variable.NamedVariable -> this.buildLoad(result.t.value, result.t.name + "_load")
                         null -> return ErrorResult("Expression parser result value came back null")
                         else -> return ErrorResult("Unrecognzied parser result value: ${result.t::class.qualifiedName}")
                     }
@@ -203,6 +200,7 @@ class ASTToLLVM{
             is WrappedResult<*> -> {
                 when(parseResult.t) {
                     is Value -> parseResult.t
+                    is Variable.NamedVariable.LocalVariable -> this.buildLoad(parseResult.t.value, "${parseResult.t.name}_load")
                     null -> return ErrorResult("Expression parser result value came back null")
                     else -> return ErrorResult("Unrecognzied parser result value: ${parseResult.t::class.qualifiedName}")
                 }
@@ -216,6 +214,7 @@ class ASTToLLVM{
             is WrappedResult<*> -> {
                 when(parseResult.t) {
                     is Value -> parseResult.t
+                    is Variable.NamedVariable -> this.buildLoad(parseResult.t.value, parseResult.t.name + "_load")
                     null -> return ErrorResult("Expression parser result value came back null")
                     else -> return ErrorResult("Unrecognzied parser result value: ${parseResult.t::class.qualifiedName}")
                 }
@@ -275,18 +274,52 @@ class ASTToLLVM{
             is ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralExpression -> {
                 this.parseStringLiteralValue(expressionNode)
             }
+            is ToylangP1ASTNode.StatementNode.ExpressionNode.IntegerLiteralExpression -> {
+                WrappedResult(createInt32Value(expressionNode.integer))
+            }
+            is ToylangP1ASTNode.StatementNode.ExpressionNode.DecimalLiteralExpression -> {
+                WrappedResult(createFloatValue(expressionNode.decimal))
+            }
             is ToylangP1ASTNode.StatementNode.ExpressionNode.ValueReferenceNode -> {
                 when(val symbol = context.findIdentifier(expressionNode.identifier)){
                     is WrappedResult<*> -> {
                         when(symbol.t){
                             is ToylangP1ASTNode.StatementNode.VariableNode.LocalVariableNode -> {
-                                WrappedResult(function?.localVariables?.find { it.name == symbol.t.identifier } ?: return ErrorResult("Local variable used before creation: ${symbol.t.identifier}"))
-                            }
+                                val v = function?.localVariables?.find { it.name == symbol.t.identifier } ?: return ErrorResult("Local variable used before creation: ${symbol.t.identifier}")
+                                when(v.type){
+                                    is Type.ArrayType -> {
+                                        WrappedResult(
+                                                this.buildBitcast(
+                                                        this.buildGetElementPointer("${v.name}_gep_load"){
+                                                            v.value ?: return ErrorResult("Value reference has no value")
+                                                        },
+                                                        Type.PointerType(Type.Int8Type()),
+                                                        "${v.name}_bitcast"
+                                                )
+                                        )
+                                    }
+                                        else -> WrappedResult(v)
+                                    }
+                                }
                             is ToylangP1ASTNode.FunctionParamNode -> {
                                 WrappedResult(function?.getParamByName(symbol.t.identifier) ?: return ErrorResult("Tried to use function parameter before creation: ${symbol.t.identifier}"))
                             }
                             is ToylangP1ASTNode.StatementNode.VariableNode.GlobalVariableNode -> {
-                                WrappedResult(module?.getGlobalReference(symbol.t.identifier) ?: return ErrorResult("Could not find global variable with identifier ${symbol.t.identifier}"))
+                                val v = module?.getGlobalReference(symbol.t.identifier) ?: return ErrorResult("Global variable does not exist: ${symbol.t.identifier}")
+                                when(v.type){
+                                    is Type.ArrayType -> {
+                                        WrappedResult(
+                                                this.buildBitcast(
+                                                        this.buildGetElementPointer("${v.name}_gep_load"){
+                                                            v.value ?: return ErrorResult("Value reference has no value")
+                                                        },
+                                                        Type.PointerType(Type.Int8Type()),
+                                                        "${v.name}_bitcast"
+                                                )
+                                        )
+                                    }
+                                    else -> WrappedResult(v.value)
+                                }
                             }
                             null -> ErrorResult("Could not get symbol from identifier ${expressionNode.identifier}")
                             else -> ErrorResult("Unrecognized node: ${symbol.t::class.qualifiedName}")
@@ -310,6 +343,7 @@ class ASTToLLVM{
                 }
             }
         }
+        context.functions.add(functionDeclNode)
         val func = this.createFunction(functionDeclNode.identifier){
             this.returnType = this@ASTToLLVM.convertTypeIdentifier(functionDeclNode.type.typeName)
             functionDeclNode.context.params.forEach {
@@ -318,6 +352,7 @@ class ASTToLLVM{
                 }
             }
             this.addBlock("local_${functionDeclNode.identifier}_block"){
+                var hasTerminator = false
                 this.startBuilder {
                     functionDeclNode.codeblock.statements.forEach {
                         when(it){
@@ -340,10 +375,13 @@ class ASTToLLVM{
                                     is WrappedResult<*> -> {
                                         when(parseResult.t){
                                             is Value -> parseResult.t
+                                            is Variable.NamedVariable -> this.buildLoad(parseResult.t.value, parseResult.t.name + "_load")
+                                            else -> return ErrorResult("Unrecognized type: ${parseResult.t!!::class.qualifiedName}")
                                         }
                                     }
-                                    is ErrorResult -> ParserErrorResult(parseResult, functionDeclNode.location)
-                                    is ParserErrorResult<*> -> ErrorResult("Parser occurred an error while paring function codeblock expression to llvm bitcode: $parseResult")
+                                    is ErrorResult -> return ParserErrorResult(parseResult, functionDeclNode.location)
+                                    is ParserErrorResult<*> -> return ErrorResult("Parser error occurred an error while paring function codeblock expression to llvm bitcode: $parseResult")
+                                    else -> return ErrorResult("Unrecognized result: $parseResult")
                                 }
                             }
                             is ToylangP1ASTNode.StatementNode.ReturnStatementNode -> {
@@ -351,12 +389,19 @@ class ASTToLLVM{
                                     is WrappedResult<*> -> {
                                         when(parseResult.t){
                                             is Value -> parseResult.t
+                                            is Variable.NamedVariable -> this.buildLoad(parseResult.t.value, "${parseResult.t.name}_load")
                                         }
                                     }
-                                    is ErrorResult -> ParserErrorResult(parseResult, functionDeclNode.location)
-                                    is ParserErrorResult<*> -> ErrorResult("Parser occurred an error while paring function codeblock expression to llvm bitcode: $parseResult")
+                                    is ErrorResult -> return ParserErrorResult(parseResult, functionDeclNode.location)
+                                    is ParserErrorResult<*> -> return ErrorResult("Parser occurred an error while paring function codeblock expression to llvm bitcode: $parseResult")
                                 }
+                                hasTerminator = true
                             }
+                        }
+                    }
+                    if(!hasTerminator){
+                        this.addReturnStatement {
+                            null
                         }
                     }
                 }

@@ -88,7 +88,19 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
         return result
     }
 
+    private fun visitTypeAnnotation(ctx: ToylangParser.TypeAnnotationContext): Result{
+        val location = Location(
+                ctx.start?.startPoint() ?: Point(1, 1),
+                ctx.stop?.endPoint() ?: Point(1, 1)
+        )
+        return WrappedResult(ToylangMainAST.TypeAnnotationNode(location, ToylangMainAST.IdentifierNode(location, ctx.text.trim { it == ':' })))
+    }
+
     override fun visitLetDeclaration(ctx: ToylangParser.LetDeclarationContext): Result {
+        val location = Location(
+                ctx.start?.startPoint() ?: Point(1, 1),
+                ctx.stop?.endPoint() ?: Point(1, 1)
+        )
         val assignmentNode = when(val result = this.visitAssignment(ctx.findAssignment()!!)){
             is WrappedResult<*> -> {
                 when(result.t){
@@ -100,40 +112,31 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
             is ErrorResult -> {
                 return ParserErrorResult(ErrorResult("Could not get assignment node from assignment visitor:\n" +
                         "Line: ${ctx.position}", result),
-                        Location(
-                                ctx.start?.startPoint() ?: Point(0, 0),
-                                ctx.stop?.startPoint() ?: Point(0, 0)
-                        )
+                        location
                 )
             }
             else -> return ErrorResult("Unknown result: $result")
         }
         val identifierNode = ToylangMainAST.IdentifierNode(
-                Location(
-                        ctx.start?.startPoint() ?: Point(0, 0),
-                        ctx.stop?.startPoint() ?: Point(0, 0)
-                ),
+                location,
                 ctx.IDENT()?.symbol?.text!!
         )
         val mutable = if(ctx.MUT() != null) ctx.MUT()?.symbol?.text?.toBoolean() ?: false else false
+        val typeAnnotation = when(val result = if(ctx.findTypeAnnotation() != null) this.visitTypeAnnotation(ctx.findTypeAnnotation()!!) else null){
+            null -> null
+            is WrappedResult<*> -> when(result.t){
+                is ToylangMainAST.TypeAnnotationNode -> result.t
+                else -> return ParserErrorResult(result, location)
+            }
+            is ErrorResult -> return ParserErrorResult(result, location)
+            else -> return ParserErrorResult(ErrorResult("Unrecognized result: $result"), location)
+        }
         return WrappedResult(
                 ToylangMainAST.StatementNode.LetNode(
-                        Location(
-                                ctx.start?.startPoint() ?: Point(0, 0),
-                                ctx.stop?.startPoint() ?: Point(0, 0)
-                        ),
+                        location,
                         identifierNode,
                         mutable,
-                        ToylangMainAST.TypeAnnotationNode(
-                                Location(
-                                        ctx.start?.startPoint() ?: Point(0, 0),
-                                        ctx.stop?.startPoint() ?: Point(0, 0)
-                                ),
-                                ToylangMainAST.IdentifierNode(Location(
-                                        ctx.start?.startPoint() ?: Point(0, 0),
-                                        ctx.stop?.startPoint() ?: Point(0, 0)
-                                ), "Unit")
-                        ),
+                        typeAnnotation,
                         assignmentNode
                 )
         )
@@ -606,8 +609,8 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
         }
 //        val returnType = if(ctx.findFnType() != null) this.visitFnType(ctx.findFnType()!!) else ToylangMainAST.TypeAnnotationNode(ToylangMainAST.IdentifierNode("Unit"))
         val returnType = when (val returnTypeResult =
-                if(ctx.findFnType() != null)
-                    this.visitFnType(ctx.findFnType()!!)
+                if(ctx.findTypeAnnotation() != null)
+                    this.visitTypeAnnotation(ctx.findTypeAnnotation()!!)
                 else
                     WrappedResult(
                             ToylangMainAST.TypeAnnotationNode(

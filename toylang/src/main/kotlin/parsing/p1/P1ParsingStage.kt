@@ -17,8 +17,6 @@ interface Context{
 
 interface ProvidesContext{
     val context: Context
-
-
 }
 
 data class GlobalContext(override val parentContext: Context? = null, val globalVariables: ArrayList<ToylangP1ASTNode.StatementNode.VariableNode.GlobalVariableNode> = arrayListOf(), val functions: ArrayList<ToylangP1ASTNode.StatementNode.FunctionDeclNode> = arrayListOf()): Context {
@@ -79,28 +77,17 @@ class GeneralParsingStage {
                 else -> throw RuntimeException("Found non-statement node mixed with statement nodes: $it")
             }
         }
-        val rootNode = ToylangP1ASTNode.RootNode(rootNode.location, statements, globalContext)
-        rootNode.context.functions.add(ToylangP1ASTNode.StatementNode.FunctionDeclNode(
-                Location(Point(1, 1),
-                        Point(1, 1)),
-                "println",
-                ToylangP1ASTNode.TypeAnnotation(
-                        Location(
-                                Point(1, 1),
-                                Point(1, 1)
-                        ),
-                        "Unit"
-                ),
-                ToylangP1ASTNode.CodeBlockNode(
-                        Location(
-                            Point(1, 1),
-                            Point(1, 1)
-                        ),
-                        emptyList()
-                ),
-                FunctionContext(globalContext)
-        ))
-        return WrappedResult(rootNode)
+        val ret = ToylangP1ASTNode.RootNode(rootNode.location, statements, globalContext)
+        ret.context.functions.add(
+                ToylangP1ASTNode.StatementNode.FunctionDeclNode(
+                        Location(Point(1, 1), Point(1, 1)),
+                        "printf",
+                        ToylangP1ASTNode.TypeAnnotation(Location(Point(1, 1), Point(1, 1)), "Int"),
+                        ToylangP1ASTNode.CodeBlockNode(Location(Point(1, 1), Point(1, 1)), emptyList()),
+                        FunctionContext(ret.context)
+                )
+        )
+        return WrappedResult(ret)
     }
 
     fun parseStringLiteralExpression(expression: ToylangMainAST.StatementNode.ExpressionNode.StringLiteralNode, context: Context): Result =
@@ -249,7 +236,7 @@ class GeneralParsingStage {
     fun parseLetNode(letNode: ToylangMainAST.StatementNode.LetNode, context: Context): Result{
         val ident = letNode.identifier.identifier
         val mutable = letNode.mutable
-        val type = ToylangP1ASTNode.TypeAnnotation(letNode.location, letNode.type.identifier.identifier)
+        val type = if(letNode.type == null) null else ToylangP1ASTNode.TypeAnnotation(letNode.location, letNode.type.identifier.identifier)
         return when(val assignmentResult = this.parseAssignment(letNode.assignment, context)){
             is WrappedResult<*> -> {
                 when(assignmentResult.t){

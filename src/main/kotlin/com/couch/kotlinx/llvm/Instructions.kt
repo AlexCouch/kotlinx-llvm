@@ -126,7 +126,7 @@ fun Builder.buildFDivide(name: String, block: BinaryArithInstruction.()->Unit): 
     }
 }
 
-fun Builder.buildGetElementPointer(tempVarName: String, block: ()->Value): Value{
+inline fun Builder.buildGetElementPointer(tempVarName: String, block: ()->Value): Value{
     val value = block()
     require(value.type is Type.ArrayType){
         "Variable is not an array type"
