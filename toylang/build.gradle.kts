@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 version = "1.0"
 
 val antlrKotlinVersion = "cd3e2d0483"
@@ -80,4 +82,8 @@ dependencies{
     compile(rootProject)
 //    compile(project(":toylang"))
     compile("com.github.strumenta:kolasu:$kolasuVersion")
+}
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.kotlinOptions {
+    freeCompilerArgs = listOf("-XXLanguage:+InlineClasses")
 }

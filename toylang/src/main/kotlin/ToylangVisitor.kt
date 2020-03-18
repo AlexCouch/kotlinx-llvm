@@ -50,6 +50,7 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
                             )
                     )
                 }
+                is ParserErrorResult<*> -> return ParserErrorResult(result, Location(ctx.start?.startPoint()?:Point(0, 0), ctx.stop?.endPoint() ?: Point(0, 0)))
                 else -> return ErrorResult("Unknown result: $result")
             }
         }
@@ -57,7 +58,8 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
         return WrappedResult(root)
     }
 
-    override fun visitStatement(ctx: ToylangParser.StatementContext): Result = when{
+    override fun visitStatement(ctx: ToylangParser.StatementContext): Result {
+        val result = when{
             ctx.findLetDeclaration() != null -> {
                 this.visitLetDeclaration(ctx.findLetDeclaration()!!)
             }
@@ -74,6 +76,16 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
                             ctx.stop?.startPoint() ?: Point(0, 0)
                     )
             )
+        }
+        val semicolon = ctx.SEMICOLON()
+        if(semicolon?.symbol?.text?.contains("missing") == true) return ParserErrorResult(
+                ErrorResult("Statement must end with a semicolon at ${Location(semicolon.symbol?.startPoint() ?: Point(0, 0), semicolon.symbol?.endPoint() ?: Point(0, 0))}"),
+                Location(
+                        ctx.start?.startPoint() ?: Point(0, 0),
+                        ctx.stop?.endPoint() ?: Point(0, 0)
+                )
+        )
+        return result
     }
 
     override fun visitLetDeclaration(ctx: ToylangParser.LetDeclarationContext): Result {
@@ -473,6 +485,7 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
     }
 
     override fun visitCodeblockStatement(ctx: ToylangParser.CodeblockStatementContext): Result {
+        if(ctx.SEMICOLON() == null) return ErrorResult("Codeblock statement must end with semicolon")
         return when{
             ctx.findLetDeclaration() != null -> {
                 this.visitLetDeclaration(ctx.findLetDeclaration()!!)

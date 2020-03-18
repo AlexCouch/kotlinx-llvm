@@ -6,10 +6,19 @@ import com.couch.kotlinx.parsing.p1.Context
 import com.couch.kotlinx.parsing.p1.FunctionContext
 import com.couch.kotlinx.parsing.p1.GlobalContext
 import com.couch.kotlinx.parsing.p1.ProvidesContext
+import org.antlr.v4.kotlinruntime.ast.Point
+import parsing.typeck.Type
 
 sealed class ToylangP1ASTNode(override val location: Location): ToylangASTNode(location){
     data class RootNode(override val location: Location, val statements: List<StatementNode>, override val context: GlobalContext): ToylangP1ASTNode(location), ProvidesContext
-    data class TypeAnnotation(override val location: Location, val typeName: String): ToylangP1ASTNode(location)
+    data class TypeAnnotation(override val location: Location, val typeName: String): ToylangP1ASTNode(location){
+        companion object {
+            val NONE = Type("None")
+            val STRING = Type("String")
+            val INTEGER = Type("INTEGER")
+            val DECIMAL = Type("DECIMAL")
+        }
+    }
     sealed class StatementNode(override val location: Location): ToylangP1ASTNode(location){
         sealed class VariableNode(
                 override val location: Location,

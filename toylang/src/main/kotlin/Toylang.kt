@@ -13,7 +13,9 @@ import com.strumenta.kolasu.model.*
 import org.antlr.v4.kotlinruntime.*
 import org.bytedeco.javacpp.BytePointer
 import org.bytedeco.llvm.global.LLVM
+import parsing.ParserErrorResult
 import parsing.p1.ToylangP1ASTNode
+import parsing.typeck.typeChecking
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
@@ -29,7 +31,7 @@ fun main(){
     val tree = parser.toylangFile()
     val visitor = ToylangVisitor()
     println("About to visit parsing.ast")
-    val rootNode = when(val visitorResult = visitor.visit(tree)!!){
+    val rootNode = when(val visitorResult = visitor.visitToylangFile(tree)){
         is WrappedResult<*> -> {
             when(visitorResult.t){
                 is ToylangMainAST.RootNode -> visitorResult.t
@@ -51,9 +53,9 @@ fun main(){
         }
     }
     rootNode.assignParents()
-    rootNode.walkChildren().forEach {
+    /*rootNode.walkChildren().forEach {
         println(it.debugPrint())
-    }
+    }*/
     val generalParsingStage = GeneralParsingStage()
     val phase1AST = when(val result = generalParsingStage.parseRootNode(rootNode)){
         is WrappedResult<*> -> {
@@ -73,6 +75,19 @@ fun main(){
         }
         else -> {
             println("Unrecognized result while parsing general AST to phase 1 AST: $result")
+            return
+        }
+    }
+    phase1AST.assignParents()
+    when(val typeCheckResult = phase1AST.typeChecking()){
+        is ErrorResult -> {
+            println("An error occurred during type checking")
+            println(typeCheckResult)
+            return
+        }
+        is ParserErrorResult<*> -> {
+            println("A parser error occurred during type checking")
+            println(typeCheckResult)
             return
         }
     }

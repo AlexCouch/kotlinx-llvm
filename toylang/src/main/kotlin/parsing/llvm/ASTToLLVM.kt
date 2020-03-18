@@ -41,7 +41,7 @@ class ASTToLLVM{
                                 }
                             }
                             is ErrorResult -> return ErrorResult("Failed to parse global variable to llvm", variable)
-                            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing global variable to LLVM bitcode: $variable")
+                            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing global variable to LLVM bitcode: $variable")
                             else -> return ErrorResult("Unrecognized result: $variable")
                         }
                     }
@@ -54,7 +54,7 @@ class ASTToLLVM{
                             }
                         }
                         is ErrorResult -> return ParserErrorResult(ErrorResult("Failed to parse function declaration to llvm", fn), rootNode.location)
-                        is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing function declaration to LLVM bitcode: $fn")
+                        is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing function declaration to LLVM bitcode: $fn")
                         else -> return ErrorResult("Unrecognized result: $fn")
                     }
                 }
@@ -90,7 +90,7 @@ class ASTToLLVM{
                 }
             }
             is ErrorResult -> ParserErrorResult(ErrorResult("Could not find symbol with identifier ${letNode.identifier} in global context"), letNode.location)
-            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing global variable to LLVM bitcode: $symbol")
+            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing global variable to LLVM bitcode: $symbol")
             else -> ErrorResult("Unrecognized result: $symbol")
         }
     }
@@ -167,7 +167,7 @@ class ASTToLLVM{
                                         }
                                     }
                                     is ErrorResult -> return ParserErrorResult(ErrorResult("Could not parse expression node to llvm", exprResult), functionCallNode.location)
-                                    is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing function declaration to LLVM bitcode: $symbol")
+                                    is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing function declaration to LLVM bitcode: $symbol")
                                     else -> return ErrorResult("Unrecognized result: $exprResult")
                                 }
                             }.toTypedArray()
@@ -182,7 +182,7 @@ class ASTToLLVM{
     }
 
     fun Builder.parseReturnStatement(returnStatement: ToylangP1ASTNode.StatementNode.ReturnStatementNode, function: Function, context: FunctionContext): Result{
-        this.addReturnStatement {
+        return WrappedResult(this.addReturnStatement {
             when(val result = this.parseExpressionNode(returnStatement.expression, function.module, function, context)){
                 is WrappedResult<*> -> {
                     when(result.t){
@@ -192,11 +192,10 @@ class ASTToLLVM{
                     }
                 }
                 is ErrorResult -> return ParserErrorResult(ErrorResult("Failed to parse expression node in return statement", result), returnStatement.location)
-                is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing return statement to LLVM bitcode: $result")
+                is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing return statement to LLVM bitcode: $result")
                 else -> return ErrorResult("Unrecognized result: $result")
             }
-        }
-        return OKResult
+        })
     }
 
     private fun Builder.parseBinaryOperationExpression(binaryNode: ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode, module: Module? = null, function: Function? = null, context: Context): Result {
@@ -209,7 +208,7 @@ class ASTToLLVM{
                 }
             }
             is ErrorResult -> return ParserErrorResult(ErrorResult("Failed to parse expression node in return statement", parseResult), binaryNode.location)
-            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing left hand of binary operation to LLVM bitcode: $parseResult")
+            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing left hand of binary operation to LLVM bitcode: $parseResult")
             else -> return ErrorResult("Unrecognized result: $parseResult")
         }
 
@@ -222,7 +221,7 @@ class ASTToLLVM{
                 }
             }
             is ErrorResult -> return ParserErrorResult(ErrorResult("Failed to parse expression node in return statement", parseResult), binaryNode.location)
-            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing right hand of binary operation to LLVM bitcode: $parseResult")
+            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing right hand of binary operation to LLVM bitcode: $parseResult")
             else -> return ErrorResult("Unrecognized result: $parseResult")
         }
         return when (binaryNode) {
@@ -294,7 +293,7 @@ class ASTToLLVM{
                         }
                     }
                     is ErrorResult -> ParserErrorResult(ErrorResult("Could not get symbol from identifier: ${expressionNode.identifier}", symbol), expressionNode.location)
-                    is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing expression to LLVM bitcode: $symbol")
+                    is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing expression to LLVM bitcode: $symbol")
                     else -> ErrorResult("Unrecognized result: $symbol")
                 }
 
@@ -332,7 +331,7 @@ class ASTToLLVM{
                                         }
                                     }
                                     is ErrorResult -> return ParserErrorResult(ErrorResult("Could not parse local variable to llvm", parseResult), functionDeclNode.location)
-                                    is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing local variable to LLVM bitcode: $parseResult")
+                                    is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing local variable to LLVM bitcode: $parseResult")
                                     else -> return ErrorResult("Unrecognized result: $parseResult")
                                 })
                             }
@@ -344,7 +343,7 @@ class ASTToLLVM{
                                         }
                                     }
                                     is ErrorResult -> ParserErrorResult(parseResult, functionDeclNode.location)
-                                    is ParserErrorResult -> ErrorResult("Parser occurred an error while paring function codeblock expression to llvm bitcode: $parseResult")
+                                    is ParserErrorResult<*> -> ErrorResult("Parser occurred an error while paring function codeblock expression to llvm bitcode: $parseResult")
                                 }
                             }
                             is ToylangP1ASTNode.StatementNode.ReturnStatementNode -> {
@@ -355,7 +354,7 @@ class ASTToLLVM{
                                         }
                                     }
                                     is ErrorResult -> ParserErrorResult(parseResult, functionDeclNode.location)
-                                    is ParserErrorResult -> ErrorResult("Parser occurred an error while paring function codeblock expression to llvm bitcode: $parseResult")
+                                    is ParserErrorResult<*> -> ErrorResult("Parser occurred an error while paring function codeblock expression to llvm bitcode: $parseResult")
                                 }
                             }
                         }

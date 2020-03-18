@@ -36,7 +36,7 @@ let name = "Alex";
 * [x] Basic arrays
 * [x] Function calls
 * [x] Addition
-* [ ] Other arithmetic
+* [x] Other arithmetic
 * [ ] Mutable variables
 * [ ] Proper String interpolation (it technically does but not properly)
 * [ ] Custom types (structs)
@@ -46,8 +46,8 @@ let name = "Alex";
 * [ ] Module imports
 
 ## Roadmap:
-* [ ] Refactor compiler to have a more robust implementation with better architecture
-* [ ] Merge scope information generation with parser visitor
+* [x] Refactor compiler to have a more robust implementation with better architecture
+* [x] Merge scope information generation with parser visitor
 * [ ] Create different AST nodes for different passes
     * [ ] Basic Type Construction and Generation
         * This is just for the initial type analysis. This will generate complex information about things like structs and traits

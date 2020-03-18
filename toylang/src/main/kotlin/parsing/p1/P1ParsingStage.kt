@@ -4,6 +4,8 @@ import ErrorResult
 import OKResult
 import Result
 import WrappedResult
+import com.couch.kotlinx.ast.Location
+import org.antlr.v4.kotlinruntime.ast.Point
 import parsing.ParserErrorResult
 import parsing.ToylangMainAST
 import parsing.p1.ToylangP1ASTNode
@@ -56,7 +58,7 @@ class GeneralParsingStage {
                             }
                         }
                         is ErrorResult -> return ErrorResult("Could not parse let node into variable node", letNodeResult)
-                        is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing let declaration: $letNodeResult")
+                        is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing let declaration: $letNodeResult")
                         else -> return ErrorResult("Unrecognized result: $letNodeResult")
                     }
                 }
@@ -70,14 +72,35 @@ class GeneralParsingStage {
                             }
                         }
                         is ErrorResult -> return ErrorResult("Could not parse function declaration node", functionDeclResult)
-                        is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing function declaration: $functionDeclResult")
+                        is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing function declaration: $functionDeclResult")
                         else -> return ErrorResult("Unrecognized result: $functionDeclResult")
                     }
                 }
                 else -> throw RuntimeException("Found non-statement node mixed with statement nodes: $it")
             }
         }
-        return WrappedResult(ToylangP1ASTNode.RootNode(rootNode.location, statements, globalContext))
+        val rootNode = ToylangP1ASTNode.RootNode(rootNode.location, statements, globalContext)
+        rootNode.context.functions.add(ToylangP1ASTNode.StatementNode.FunctionDeclNode(
+                Location(Point(1, 1),
+                        Point(1, 1)),
+                "println",
+                ToylangP1ASTNode.TypeAnnotation(
+                        Location(
+                                Point(1, 1),
+                                Point(1, 1)
+                        ),
+                        "Unit"
+                ),
+                ToylangP1ASTNode.CodeBlockNode(
+                        Location(
+                            Point(1, 1),
+                            Point(1, 1)
+                        ),
+                        emptyList()
+                ),
+                FunctionContext(globalContext)
+        ))
+        return WrappedResult(rootNode)
     }
 
     fun parseStringLiteralExpression(expression: ToylangMainAST.StatementNode.ExpressionNode.StringLiteralNode, context: Context): Result =
@@ -97,7 +120,7 @@ class GeneralParsingStage {
                             is ErrorResult -> {
                                 return ErrorResult("Could not parse expression node for string interpolation", interpExpressionResult)
                             }
-                            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing string interpolation: $interpExpressionResult")
+                            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing string interpolation: $interpExpressionResult")
                             else -> return ErrorResult("Could not parse expression node for string interpolation", ErrorResult("Unrecognized result: $interpExpressionResult"))
                         }
                     }
@@ -124,7 +147,7 @@ class GeneralParsingStage {
             is ErrorResult -> {
                 return ErrorResult("Could not get wrapped parsed expression from phase 1 parser", cause = leftParseResult)
             }
-            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing left hand of binary operation: $leftParseResult")
+            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing left hand of binary operation: $leftParseResult")
             else -> {
                 return ErrorResult("Could not get proper return result from expression parser for right expression of binary operation")
             }
@@ -142,7 +165,7 @@ class GeneralParsingStage {
             is ErrorResult -> {
                 return ErrorResult("Could not get wrapped parsed expression from phase 1 parser", cause = rightParseResult)
             }
-            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing right hand of binary operation: $rightParseResult")
+            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing right hand of binary operation: $rightParseResult")
             else -> {
                 return ErrorResult("Could not get proper return result from expression parser for right expression of binary operation")
             }
@@ -176,7 +199,7 @@ class GeneralParsingStage {
                     }
                 }
                 is ErrorResult -> return ParserErrorResult(ErrorResult("Could not parse function call argument", expressionResult), functionCallNode.location)
-                is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing function call: $expressionResult")
+                is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing function call: $expressionResult")
                 else -> return ErrorResult("Unrecognized result: $expressionResult")
             }
         }
@@ -219,7 +242,7 @@ class GeneralParsingStage {
             is ErrorResult -> {
                 ParserErrorResult(ErrorResult("Could not parse expression for assignment node", cause = expressionResult), assignmentNode.location)
             }
-            is ParserErrorResult -> ErrorResult("Parser error occurred while parsing assignment: $expressionResult")
+            is ParserErrorResult<*> -> ErrorResult("Parser error occurred while parsing assignment: $expressionResult")
             else -> ErrorResult("Could not parse expression, got an unrecognized return result: $expressionResult")
         }
 
@@ -252,7 +275,7 @@ class GeneralParsingStage {
             is ErrorResult -> {
                 ParserErrorResult(ErrorResult("Could not get phase 1 parsed assignment node", assignmentResult), letNode.location)
             }
-            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing function call: $assignmentResult")
+            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing function call: $assignmentResult")
             else -> ErrorResult("Unrecognized result: $assignmentResult")
         }
     }
@@ -270,7 +293,7 @@ class GeneralParsingStage {
                     ErrorResult("Could not parse expression node", expressionResult),
                     statementNode.location
             )
-            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing return statement: $expressionResult")
+            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing return statement: $expressionResult")
             else -> return ErrorResult("Unrecognized result: $expressionResult")
         }
         return WrappedResult(ToylangP1ASTNode.StatementNode.ReturnStatementNode(statementNode.location, expression))
@@ -330,7 +353,7 @@ class GeneralParsingStage {
                     }
                 }
                 is ErrorResult -> return ParserErrorResult(ErrorResult("Could not parse codeblock statement", codeblockStatementResult), codeblock.location)
-                is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing codeblock statement: $codeblockStatementResult")
+                is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing codeblock statement: $codeblockStatementResult")
                 else -> return ErrorResult("Unrecognized result: $codeblockStatementResult")
             }
         }
@@ -369,7 +392,7 @@ class GeneralParsingStage {
                     }
                 }
                 is ErrorResult -> return ParserErrorResult(ErrorResult("Could not parse function param node", paramResult), functionDeclNode.location)
-                is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing function parameter: $paramResult")
+                is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing function parameter: $paramResult")
                 else -> return ErrorResult("Unrecognized result: $paramResult")
             }
         })
@@ -382,7 +405,7 @@ class GeneralParsingStage {
                 }
             }
             is ErrorResult -> return ParserErrorResult(ErrorResult("Could not parse codeblock", codeblockParseResult), functionDeclNode.location)
-            is ParserErrorResult -> return ErrorResult("Parser error occurred while parsing function call: $codeblockParseResult")
+            is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing function call: $codeblockParseResult")
             else -> return ErrorResult("Unrecognized result: $codeblockParseResult")
         }.apply {
             this.statements.forEach {
