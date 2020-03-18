@@ -125,7 +125,7 @@ class ASTToLLVM{
                                 })
                             }
                             is Variable.NamedVariable -> WrappedResult(this.buildLoad(parseResult.t.value, letNode.identifier))
-                            else -> ErrorResult("Did Expression parse result came back abnormal: $result")
+                            else -> ErrorResult("Expression parse result came back abnormal: $result")
                         }
                     }
                     is ErrorResult -> ParserErrorResult(parseResult, letNode.location)
@@ -150,7 +150,7 @@ class ASTToLLVM{
             is WrappedResult<*> -> {
                 when(symbol.t){
                     is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> {
-                        val fn = module?.findFunction(fnName) ?: return ErrorResult("Function does not exist in current module context")
+                        val fn = module?.findFunction(fnName) ?: function?.module?.findFunction(fnName) ?: return ErrorResult("Function does not exist in current module context: $fnName")
                         WrappedResult(this.buildFunctionCall("${fnName}_call", fn) {
                             functionCallNode.args.map {
                                 when(val exprResult = this.parseExpressionNode(it, module, function, context)) {

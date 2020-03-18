@@ -10,7 +10,8 @@ fn calcAverage(x: Int, y: Int, z: Int): Int{
 };
 
 fn main(argc: Int){
+    let addResult: Int = add(10, 20);
     printf(test);
-    printf("%d\n", add(5, 6));
+    printf("%d\n", addResult);
     printf("%d\n", calcAverage(5, 3, 6));
 };
