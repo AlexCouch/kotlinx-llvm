@@ -3,26 +3,22 @@ package parsing.llvm
 import Result
 import WrappedResult
 import ErrorResult
-import OKResult
-import com.couch.kotlinx.ast.Location
 import com.couch.kotlinx.llvm.*
 import com.couch.kotlinx.llvm.Function
-import com.couch.kotlinx.parsing.p1.Context
-import com.couch.kotlinx.parsing.p1.FunctionContext
-import com.couch.kotlinx.parsing.p1.GlobalContext
 import com.strumenta.kolasu.model.walkChildren
-import org.antlr.v4.kotlinruntime.ast.Point
+import parsing.Context
+import parsing.FunctionContext
+import parsing.GlobalContext
 import parsing.ParserErrorResult
-import parsing.p1.ToylangP1ASTNode
-import kotlin.math.exp
+import parsing.hir.ToylangHIRElement
 import kotlin.random.Random
 
 class ASTToLLVM{
-    fun startGeneratingLLVM(moduleName: String, rootNode: ToylangP1ASTNode.RootNode): Result {
+    fun startGeneratingLLVM(moduleName: String, rootNode: ToylangHIRElement.RootNode): Result {
         return WrappedResult(buildModule(moduleName){
             rootNode.walkChildren().forEach {
                 when(it){
-                    is ToylangP1ASTNode.StatementNode.VariableNode.GlobalVariableNode -> {
+                    is ToylangHIRElement.StatementNode.VariableNode.GlobalVariableNode -> {
                         when(val variable = this.parseLetNode(it, rootNode.context)){
                             is WrappedResult<*> -> {
                                 when(variable.t){
@@ -36,7 +32,7 @@ class ASTToLLVM{
                             else -> return ErrorResult("Unrecognized result: $variable")
                         }
                     }
-                    is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> when(val fn = this.parseFunctionDeclNode(it, rootNode.context)){
+                    is ToylangHIRElement.StatementNode.FunctionDeclNode -> when(val fn = this.parseFunctionDeclNode(it, rootNode.context)){
                         is WrappedResult<*> -> {
                             when(fn.t){
                                 is Function -> {
@@ -55,22 +51,22 @@ class ASTToLLVM{
         })
     }
 
-    fun Module.parseLetNode(letNode: ToylangP1ASTNode.StatementNode.VariableNode.GlobalVariableNode, context: GlobalContext): Result{
+    fun Module.parseLetNode(letNode: ToylangHIRElement.StatementNode.VariableNode.GlobalVariableNode, context: GlobalContext): Result{
         return when(val symbol = context.findIdentifier(letNode.identifier)){
             is WrappedResult<*> -> {
                 when(symbol.t){
-                    is ToylangP1ASTNode.StatementNode.VariableNode.GlobalVariableNode -> {
+                    is ToylangHIRElement.StatementNode.VariableNode.GlobalVariableNode -> {
                         when(symbol.t.assignment.expression) {
-                            is ToylangP1ASTNode.StatementNode.ExpressionNode.IntegerLiteralExpression -> {
+                            is ToylangHIRElement.StatementNode.ExpressionNode.IntegerLiteralExpression -> {
                                 WrappedResult(this.createGlobalVariable(letNode.identifier, Type.Int32Type()) {
                                     createInt32Value(symbol.t.assignment.expression.integer)
                                 })
                             }
-                            is ToylangP1ASTNode.StatementNode.ExpressionNode.DecimalLiteralExpression ->
+                            is ToylangHIRElement.StatementNode.ExpressionNode.DecimalLiteralExpression ->
                                 WrappedResult(this.createGlobalVariable(letNode.identifier, Type.FloatType()) {
                                     createFloatValue(symbol.t.assignment.expression.decimal)
                                 })
-                            is ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralExpression -> {
+                            is ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralExpression -> {
                                 val stringContent = this@ASTToLLVM.parseStringLiteralNode(symbol.t.assignment.expression)
                                 WrappedResult(this.createGlobalVariable(letNode.identifier, Type.ArrayType(Type.Int8Type(), stringContent.length + 1)) {
                                     createStringValue(stringContent)
@@ -88,21 +84,21 @@ class ASTToLLVM{
         }
     }
 
-    fun parseStringLiteralNode(stringNode: ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralExpression): String{
+    fun parseStringLiteralNode(stringNode: ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralExpression): String{
         return stringNode.content.map {
             when(it){
-                is ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralContentNode.StringLiteralRawNode -> {
+                is ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralContentNode.StringLiteralRawNode -> {
                     it.content
                 }
-                is ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralContentNode.StringLiteralInterpolationNode -> {
+                is ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralContentNode.StringLiteralInterpolationNode -> {
                     when(it.expression){
-                        is ToylangP1ASTNode.StatementNode.ExpressionNode.IntegerLiteralExpression -> {
+                        is ToylangHIRElement.StatementNode.ExpressionNode.IntegerLiteralExpression -> {
                             it.expression.integer.toString()
                         }
-                        is ToylangP1ASTNode.StatementNode.ExpressionNode.DecimalLiteralExpression -> {
+                        is ToylangHIRElement.StatementNode.ExpressionNode.DecimalLiteralExpression -> {
                             it.expression.decimal.toString()
                         }
-                        is ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralExpression -> {
+                        is ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralExpression -> {
                             this.parseStringLiteralNode(it.expression)
                         }
                         else -> ParserErrorResult(ErrorResult("Could not parse expression inside string interpolation"), stringNode.location)
@@ -112,7 +108,7 @@ class ASTToLLVM{
         }.joinToString()
     }
 
-    fun Builder.parseLocalVariableNode(letNode: ToylangP1ASTNode.StatementNode.VariableNode.LocalVariableNode, function: Function, context: FunctionContext): Result{
+    fun Builder.parseLocalVariableNode(letNode: ToylangHIRElement.StatementNode.VariableNode.LocalVariableNode, function: Function, context: FunctionContext): Result{
         if(letNode.type == null) return ParserErrorResult(ErrorResult("Variable type annotation cannot be null: $letNode"), letNode.location)
         return when(val result = context.findIdentifier(letNode.identifier)){
             is WrappedResult<*> -> {
@@ -144,12 +140,12 @@ class ASTToLLVM{
             else -> Type.VoidType()
     }
 
-    fun Builder.parseFunctionCall(functionCallNode: ToylangP1ASTNode.StatementNode.ExpressionNode.FunctionCallNode, module: Module? = null, function: Function? = null, context: Context): Result{
+    fun Builder.parseFunctionCall(functionCallNode: ToylangHIRElement.StatementNode.ExpressionNode.FunctionCallNode, module: Module? = null, function: Function? = null, context: Context): Result{
         val fnName = functionCallNode.identifier
         return when(val symbol = context.findIdentifier(fnName)){
             is WrappedResult<*> -> {
                 when(symbol.t){
-                    is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> {
+                    is ToylangHIRElement.StatementNode.FunctionDeclNode -> {
                         val fn = module?.findFunction(fnName) ?: function?.module?.findFunction(fnName) ?: return ErrorResult("Function does not exist in current module context: $fnName")
                         WrappedResult(this.buildFunctionCall("${fnName}_call", fn) {
                             functionCallNode.args.map {
@@ -177,7 +173,7 @@ class ASTToLLVM{
         }
     }
 
-    fun Builder.parseReturnStatement(returnStatement: ToylangP1ASTNode.StatementNode.ReturnStatementNode, function: Function, context: FunctionContext): Result{
+    fun Builder.parseReturnStatement(returnStatement: ToylangHIRElement.StatementNode.ReturnStatementNode, function: Function, context: FunctionContext): Result{
         return WrappedResult(this.addReturnStatement {
             when(val result = this.parseExpressionNode(returnStatement.expression, function.module, function, context)){
                 is WrappedResult<*> -> {
@@ -195,7 +191,7 @@ class ASTToLLVM{
         })
     }
 
-    private fun Builder.parseBinaryOperationExpression(binaryNode: ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode, module: Module? = null, function: Function? = null, context: Context): Result {
+    private fun Builder.parseBinaryOperationExpression(binaryNode: ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode, module: Module? = null, function: Function? = null, context: Context): Result {
         val left = when(val parseResult = this.parseExpressionNode(binaryNode.left, module, function, context)){
             is WrappedResult<*> -> {
                 when(parseResult.t) {
@@ -224,25 +220,25 @@ class ASTToLLVM{
             else -> return ErrorResult("Unrecognized result: $parseResult")
         }
         return when (binaryNode) {
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode.PlusNode -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode.PlusNode -> {
                 WrappedResult(this.buildAdditionInstruction("plusResult"){
                     this.left = left
                     this.right = right
                 })
             }
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode.MinusNode -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode.MinusNode -> {
                 WrappedResult(this.buildMinusInstruction("subResult"){
                     this.left = left
                     this.right = right
                 })
             }
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode.DivNode -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode.DivNode -> {
                 WrappedResult(this.buildSDivide("divResult"){
                     this.left = left
                     this.right = right
                 })
             }
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode.MultiplyNode -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode.MultiplyNode -> {
                 WrappedResult(this.buildMultiplyInstruction("multResult"){
                     this.left = left
                     this.right = right
@@ -251,7 +247,7 @@ class ASTToLLVM{
         }
     }
 
-    private fun Builder.parseStringLiteralValue(expressionNode: ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralExpression, module: Module? = null, function: Function? = null): Result{
+    private fun Builder.parseStringLiteralValue(expressionNode: ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralExpression, module: Module? = null, function: Function? = null): Result{
         val rand = Random.nextInt()
         val strContent = parseStringLiteralNode(expressionNode)
         val temp = this.createLocalVariable("strLiteral_tmp$rand", Type.ArrayType(Type.Int8Type(), strContent.length + 1)){
@@ -263,28 +259,28 @@ class ASTToLLVM{
         return WrappedResult(this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "strLiteral_tmp_bitcast$rand"))
     }
 
-    private fun Builder.parseExpressionNode(expressionNode: ToylangP1ASTNode.StatementNode.ExpressionNode, module: Module? = null, function: Function? = null, context: Context): Result{
+    private fun Builder.parseExpressionNode(expressionNode: ToylangHIRElement.StatementNode.ExpressionNode, module: Module? = null, function: Function? = null, context: Context): Result{
         return when(expressionNode){
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.FunctionCallNode -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.FunctionCallNode -> {
                 this.parseFunctionCall(expressionNode, module, function, context)
             }
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode -> {
                 this.parseBinaryOperationExpression(expressionNode, module, function, context)
             }
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralExpression -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralExpression -> {
                 this.parseStringLiteralValue(expressionNode)
             }
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.IntegerLiteralExpression -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.IntegerLiteralExpression -> {
                 WrappedResult(createInt32Value(expressionNode.integer))
             }
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.DecimalLiteralExpression -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.DecimalLiteralExpression -> {
                 WrappedResult(createFloatValue(expressionNode.decimal))
             }
-            is ToylangP1ASTNode.StatementNode.ExpressionNode.ValueReferenceNode -> {
+            is ToylangHIRElement.StatementNode.ExpressionNode.ValueReferenceNode -> {
                 when(val symbol = context.findIdentifier(expressionNode.identifier)){
                     is WrappedResult<*> -> {
                         when(symbol.t){
-                            is ToylangP1ASTNode.StatementNode.VariableNode.LocalVariableNode -> {
+                            is ToylangHIRElement.StatementNode.VariableNode.LocalVariableNode -> {
                                 val v = function?.localVariables?.find { it.name == symbol.t.identifier } ?: return ErrorResult("Local variable used before creation: ${symbol.t.identifier}")
                                 when(v.type){
                                     is Type.ArrayType -> {
@@ -301,10 +297,10 @@ class ASTToLLVM{
                                         else -> WrappedResult(v)
                                     }
                                 }
-                            is ToylangP1ASTNode.FunctionParamNode -> {
+                            is ToylangHIRElement.FunctionParamNode -> {
                                 WrappedResult(function?.getParamByName(symbol.t.identifier) ?: return ErrorResult("Tried to use function parameter before creation: ${symbol.t.identifier}"))
                             }
-                            is ToylangP1ASTNode.StatementNode.VariableNode.GlobalVariableNode -> {
+                            is ToylangHIRElement.StatementNode.VariableNode.GlobalVariableNode -> {
                                 val v = module?.getGlobalReference(symbol.t.identifier) ?: return ErrorResult("Global variable does not exist: ${symbol.t.identifier}")
                                 when(v.type){
                                     is Type.ArrayType -> {
@@ -335,11 +331,11 @@ class ASTToLLVM{
         }
     }
 
-    fun Module.parseFunctionDeclNode(functionDeclNode: ToylangP1ASTNode.StatementNode.FunctionDeclNode, context: GlobalContext): Result{
+    fun Module.parseFunctionDeclNode(functionDeclNode: ToylangHIRElement.StatementNode.FunctionDeclNode, context: GlobalContext): Result{
         when(val symbolResult = context.findIdentifier(functionDeclNode.identifier)){
             is WrappedResult<*> -> {
                 when(symbolResult.t){
-                    is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> return ErrorResult("Function with identifier ${symbolResult.t.identifier} already exists")
+                    is ToylangHIRElement.StatementNode.FunctionDeclNode -> return ErrorResult("Function with identifier ${symbolResult.t.identifier} already exists")
                 }
             }
         }
@@ -356,7 +352,7 @@ class ASTToLLVM{
                 this.startBuilder {
                     functionDeclNode.codeblock.statements.forEach {
                         when(it){
-                            is ToylangP1ASTNode.StatementNode.VariableNode.LocalVariableNode -> {
+                            is ToylangHIRElement.StatementNode.VariableNode.LocalVariableNode -> {
                                 this@createFunction.localVariables.add(when(val parseResult = this.parseLocalVariableNode(it, this@createFunction, functionDeclNode.context)){
                                     is WrappedResult<*> -> {
                                         when(parseResult.t){
@@ -370,7 +366,7 @@ class ASTToLLVM{
                                     else -> return ErrorResult("Unrecognized result: $parseResult")
                                 })
                             }
-                            is ToylangP1ASTNode.StatementNode.ExpressionNode -> {
+                            is ToylangHIRElement.StatementNode.ExpressionNode -> {
                                 when(val parseResult = this.parseExpressionNode(it, this@createFunction.module, function, functionDeclNode.context)){
                                     is WrappedResult<*> -> {
                                         when(parseResult.t){
@@ -384,7 +380,7 @@ class ASTToLLVM{
                                     else -> return ErrorResult("Unrecognized result: $parseResult")
                                 }
                             }
-                            is ToylangP1ASTNode.StatementNode.ReturnStatementNode -> {
+                            is ToylangHIRElement.StatementNode.ReturnStatementNode -> {
                                 when(val parseResult = parseReturnStatement(it, this@createFunction, functionDeclNode.context)){
                                     is WrappedResult<*> -> {
                                         when(parseResult.t){

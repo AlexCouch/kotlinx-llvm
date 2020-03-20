@@ -1,8 +1,7 @@
 package parsing
 
-import com.couch.kotlinx.ast.Location
-import com.couch.kotlinx.ast.ToylangASTNode
-import com.strumenta.kolasu.model.Position
+import parsing.ast.Location
+import parsing.ast.ToylangASTNode
 
 sealed class ToylangMainAST(override val location: Location): ToylangASTNode(location){
     data class RootNode(override val location: Location, val statements: List<StatementNode> = arrayListOf()): ToylangMainAST(location)

@@ -1,9 +1,8 @@
 package parsing
 
 import Result
-import ErrorResult
 import buildPrettyString
-import com.couch.kotlinx.ast.Location
+import parsing.ast.Location
 
 data class ParserErrorResult<T: Result>(val cause: T, val location: Location): Result{
     override fun toString(): String {

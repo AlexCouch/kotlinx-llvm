@@ -1,6 +1,5 @@
-package com.couch.kotlinx.ast
+package parsing.ast
 
-import com.couch.kotlinx.parsing.Scope
 import com.strumenta.kolasu.model.Node
 import org.antlr.v4.kotlinruntime.ast.Point
 

@@ -1,56 +1,23 @@
-package com.couch.kotlinx.parsing.p1
+package parsing.hir
 
 import ErrorResult
-import OKResult
 import Result
 import WrappedResult
-import com.couch.kotlinx.ast.Location
+import parsing.ast.Location
 import org.antlr.v4.kotlinruntime.ast.Point
-import parsing.ParserErrorResult
-import parsing.ToylangMainAST
-import parsing.p1.ToylangP1ASTNode
+import parsing.*
 
-interface Context{
-    val parentContext: Context?
-    fun findIdentifier(identifier: String): Result
-}
-
-interface ProvidesContext{
-    val context: Context
-}
-
-data class GlobalContext(override val parentContext: Context? = null, val globalVariables: ArrayList<ToylangP1ASTNode.StatementNode.VariableNode.GlobalVariableNode> = arrayListOf(), val functions: ArrayList<ToylangP1ASTNode.StatementNode.FunctionDeclNode> = arrayListOf()): Context {
-    override fun findIdentifier(identifier: String): Result {
-        val found = this.globalVariables.find { it.identifier == identifier } ?: this.functions.find { it.identifier == identifier }
-        return if(found != null) WrappedResult(found) else when(val parentFound = this.parentContext?.findIdentifier(identifier) ?: return ErrorResult("No parent context, and no symbol found in current context: $identifier")){
-            is WrappedResult<*> -> parentFound
-            is ErrorResult -> ErrorResult("Could not find symbol with identifier: $identifier", parentFound)
-            else -> OKResult
-        }
-    }
-}
-
-data class FunctionContext(override val parentContext: Context, val params: ArrayList<ToylangP1ASTNode.FunctionParamNode> = arrayListOf(), val localVariables: ArrayList<ToylangP1ASTNode.StatementNode.VariableNode.LocalVariableNode> = arrayListOf()): Context{
-    override fun findIdentifier(identifier: String): Result {
-        val found = this.params.find { it.identifier == identifier } ?: this.localVariables.find { it.identifier == identifier }
-        return if(found != null) WrappedResult(found) else when(val parentFound = this.parentContext.findIdentifier(identifier)){
-            is WrappedResult<*> -> parentFound
-            is ErrorResult -> ErrorResult("Could not find symbol with identifier: $identifier", parentFound)
-            else -> ErrorResult("Unrecognized result: $parentFound")
-        }
-    }
-}
-
-class GeneralParsingStage {
-    fun parseRootNode(rootNode: ToylangMainAST.RootNode): Result{
-        val globalContext = GlobalContext()
-        val statements = rootNode.statements.map{
+class HIRGenerator: Parse<ToylangMainAST, Result>() {
+    override fun parseFile(node: ToylangMainAST, context: Context): Result{
+        if(context !is GlobalContext) return ParserErrorResult(ErrorResult("Attempted to parse file without global context"), node.location)
+        if(node !is ToylangMainAST.RootNode) return ParserErrorResult(ErrorResult("Attempted to parse file without root node: $node"), node.location)
+        val statements = node.statements.map{
             when (it) {
                 is ToylangMainAST.StatementNode.LetNode -> {
-                    when(val letNodeResult = this.parseLetNode(it, globalContext)){
+                    when(val letNodeResult = this.parseLetNode(it, context)){
                         is WrappedResult<*> -> {
                             when(letNodeResult.t){
-                                is ToylangP1ASTNode.StatementNode.VariableNode.GlobalVariableNode -> letNodeResult.t
+                                is ToylangHIRElement.StatementNode.VariableNode.GlobalVariableNode -> letNodeResult.t
                                 null -> return ErrorResult("Variable node came back null")
                                 else -> return ErrorResult("Variable node came back as wrong type: ${letNodeResult.t::class.qualifiedName}")
                             }
@@ -61,10 +28,10 @@ class GeneralParsingStage {
                     }
                 }
                 is ToylangMainAST.StatementNode.FunctionDeclNode -> {
-                    when(val functionDeclResult = this.parseFunctionDeclNode(it, globalContext)){
+                    when(val functionDeclResult = this.parseFunctionDeclNode(it, context)){
                         is WrappedResult<*> -> {
                             when(functionDeclResult.t){
-                                is ToylangP1ASTNode.StatementNode.FunctionDeclNode -> functionDeclResult.t
+                                is ToylangHIRElement.StatementNode.FunctionDeclNode -> functionDeclResult.t
                                 null -> return ErrorResult("Function declaration node came back null")
                                 else -> return ErrorResult("Function declaration node came back as wrong type: ${functionDeclResult.t::class.qualifiedName}")
                             }
@@ -77,13 +44,13 @@ class GeneralParsingStage {
                 else -> throw RuntimeException("Found non-statement node mixed with statement nodes: $it")
             }
         }
-        val ret = ToylangP1ASTNode.RootNode(rootNode.location, statements, globalContext)
+        val ret = ToylangHIRElement.RootNode(node.location, statements, context)
         ret.context.functions.add(
-                ToylangP1ASTNode.StatementNode.FunctionDeclNode(
+                ToylangHIRElement.StatementNode.FunctionDeclNode(
                         Location(Point(1, 1), Point(1, 1)),
                         "printf",
-                        ToylangP1ASTNode.TypeAnnotation(Location(Point(1, 1), Point(1, 1)), "Int"),
-                        ToylangP1ASTNode.CodeBlockNode(Location(Point(1, 1), Point(1, 1)), emptyList()),
+                        ToylangHIRElement.TypeAnnotation(Location(Point(1, 1), Point(1, 1)), "Int"),
+                        ToylangHIRElement.CodeBlockNode(Location(Point(1, 1), Point(1, 1)), emptyList()),
                         FunctionContext(ret.context)
                 )
         )
@@ -91,14 +58,14 @@ class GeneralParsingStage {
     }
 
     fun parseStringLiteralExpression(expression: ToylangMainAST.StatementNode.ExpressionNode.StringLiteralNode, context: Context): Result =
-            WrappedResult(ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralExpression(expression.location, expression.content.map {
+            WrappedResult(ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralExpression(expression.location, expression.content.map {
                 when (it) {
                     is ToylangMainAST.StatementNode.ExpressionNode.StringLiteralContentNode.StringInterpolationNode -> {
                         when(val interpExpressionResult = this.parseExpression(it.interpolatedExpr, context)){
                             is WrappedResult<*> -> {
                                 when(interpExpressionResult.t){
-                                    is ToylangP1ASTNode.StatementNode.ExpressionNode -> {
-                                        ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralContentNode.StringLiteralInterpolationNode(expression.location, interpExpressionResult.t)
+                                    is ToylangHIRElement.StatementNode.ExpressionNode -> {
+                                        ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralContentNode.StringLiteralInterpolationNode(expression.location, interpExpressionResult.t)
                                     }
                                     else -> return ErrorResult("Could not parse expression node for string interpolation")
                                 }
@@ -112,20 +79,28 @@ class GeneralParsingStage {
                         }
                     }
                     is ToylangMainAST.StatementNode.ExpressionNode.StringLiteralContentNode.RawStringLiteralContentNode -> {
-                        ToylangP1ASTNode.StatementNode.ExpressionNode.StringLiteralContentNode.StringLiteralRawNode(expression.location, it.string)
+                        ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralContentNode.StringLiteralRawNode(expression.location, it.string)
                     }
                 }
             }))
 
-    fun parseBinaryOperation(expression: ToylangMainAST.StatementNode.ExpressionNode.BinaryOperation, context: Context): Result {
-        val leftParseResult = this.parseExpression(expression.left, context)
-        val rightParseResult = this.parseExpression(expression.right, context)
+    override fun parseOperation(node: ToylangMainAST, context: Context): Result {
+        return when(node){
+            is ToylangMainAST.StatementNode.ExpressionNode.BinaryOperation -> this.parseBinaryOperation(node, context)
+            else -> ParserErrorResult(ErrorResult("Attempted to parse operation without an operation node to parse"), node.location)
+        }
+    }
 
-        val left: ToylangP1ASTNode.StatementNode.ExpressionNode
+    override fun parseBinaryOperation(node: ToylangMainAST, context: Context): Result {
+        if(node !is ToylangMainAST.StatementNode.ExpressionNode.BinaryOperation) return ParserErrorResult(ErrorResult("Attempted to parse binary operation without a binary operation node"), node.location)
+        val leftParseResult = this.parseExpression(node.left, context)
+        val rightParseResult = this.parseExpression(node.right, context)
+
+        val left: ToylangHIRElement.StatementNode.ExpressionNode
         when (leftParseResult) {
             is WrappedResult<*> -> {
                 when (leftParseResult.t) {
-                    is ToylangP1ASTNode.StatementNode.ExpressionNode -> left = leftParseResult.t
+                    is ToylangHIRElement.StatementNode.ExpressionNode -> left = leftParseResult.t
                     else -> {
                         return ErrorResult("Did not get expression node from parsing the left node of binary operation")
                     }
@@ -139,11 +114,11 @@ class GeneralParsingStage {
                 return ErrorResult("Could not get proper return result from expression parser for right expression of binary operation")
             }
         }
-        val right: ToylangP1ASTNode.StatementNode.ExpressionNode
+        val right: ToylangHIRElement.StatementNode.ExpressionNode
         when (rightParseResult) {
             is WrappedResult<*> -> {
                 when (rightParseResult.t) {
-                    is ToylangP1ASTNode.StatementNode.ExpressionNode -> right = rightParseResult.t
+                    is ToylangHIRElement.StatementNode.ExpressionNode -> right = rightParseResult.t
                     else -> {
                         return ErrorResult("Did not get expression node from parsing the left node of binary operation")
                     }
@@ -158,18 +133,18 @@ class GeneralParsingStage {
             }
         }
 
-        return when (expression) {
+        return when (node) {
             is ToylangMainAST.StatementNode.ExpressionNode.BinaryOperation.BinaryPlusOperation -> {
-                WrappedResult(ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode.PlusNode(expression.location, left, right))
+                WrappedResult(ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode.PlusNode(node.location, left, right))
             }
             is ToylangMainAST.StatementNode.ExpressionNode.BinaryOperation.BinaryMinusOperation -> {
-                WrappedResult(ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode.MinusNode(expression.location, left, right))
+                WrappedResult(ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode.MinusNode(node.location, left, right))
             }
             is ToylangMainAST.StatementNode.ExpressionNode.BinaryOperation.BinaryDivOperation -> {
-                WrappedResult(ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode.DivNode(expression.location, left, right))
+                WrappedResult(ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode.DivNode(node.location, left, right))
             }
             is ToylangMainAST.StatementNode.ExpressionNode.BinaryOperation.BinaryMultOperation -> {
-                WrappedResult(ToylangP1ASTNode.StatementNode.ExpressionNode.BinaryExpressionNode.MultiplyNode(expression.location, left, right))
+                WrappedResult(ToylangHIRElement.StatementNode.ExpressionNode.BinaryExpressionNode.MultiplyNode(node.location, left, right))
             }
         }
     }
@@ -180,7 +155,7 @@ class GeneralParsingStage {
             when(val expressionResult = this.parseExpression(it, context)){
                 is WrappedResult<*> -> {
                     when(expressionResult.t){
-                        is ToylangP1ASTNode.StatementNode.ExpressionNode -> expressionResult.t
+                        is ToylangHIRElement.StatementNode.ExpressionNode -> expressionResult.t
                         null -> return ErrorResult("Wrapped return result object was null")
                         else -> return ErrorResult("Function call argument expression node came back wrong type ${expressionResult.t::class::qualifiedName}")
                     }
@@ -190,37 +165,37 @@ class GeneralParsingStage {
                 else -> return ErrorResult("Unrecognized result: $expressionResult")
             }
         }
-        return WrappedResult(ToylangP1ASTNode.StatementNode.ExpressionNode.FunctionCallNode(functionCallNode.location, ident, args))
+        return WrappedResult(ToylangHIRElement.StatementNode.ExpressionNode.FunctionCallNode(functionCallNode.location, ident, args))
     }
 
-    fun parseExpression(expression: ToylangMainAST.StatementNode.ExpressionNode, context: Context): Result = when(expression){
+    override fun parseExpression(node: ToylangMainAST, context: Context): Result = when(node){
             is ToylangMainAST.StatementNode.ExpressionNode.IntegerLiteralNode -> {
-                WrappedResult(ToylangP1ASTNode.StatementNode.ExpressionNode.IntegerLiteralExpression(expression.location, expression.integer))
+                WrappedResult(ToylangHIRElement.StatementNode.ExpressionNode.IntegerLiteralExpression(node.location, node.integer))
             }
             is ToylangMainAST.StatementNode.ExpressionNode.DecimalLiteralNode -> {
-                WrappedResult(ToylangP1ASTNode.StatementNode.ExpressionNode.DecimalLiteralExpression(expression.location, expression.float))
+                WrappedResult(ToylangHIRElement.StatementNode.ExpressionNode.DecimalLiteralExpression(node.location, node.float))
             }
             is ToylangMainAST.StatementNode.ExpressionNode.StringLiteralNode -> {
-                this.parseStringLiteralExpression(expression, context)
+                this.parseStringLiteralExpression(node, context)
             }
             is ToylangMainAST.StatementNode.ExpressionNode.BinaryOperation -> {
-                this.parseBinaryOperation(expression, context)
+                this.parseBinaryOperation(node, context)
             }
             is ToylangMainAST.StatementNode.ExpressionNode.FunctionCallNode -> {
-                this.parseFunctionCallNode(expression, context)
+                this.parseFunctionCallNode(node, context)
             }
             is ToylangMainAST.StatementNode.ExpressionNode.ValueReferenceNode -> {
-                WrappedResult(ToylangP1ASTNode.StatementNode.ExpressionNode.ValueReferenceNode(expression.location, expression.ident.identifier))
+                WrappedResult(ToylangHIRElement.StatementNode.ExpressionNode.ValueReferenceNode(node.location, node.ident.identifier))
             }
-            else -> ParserErrorResult(ErrorResult("Could not parse expression: expression not recognized."), expression.location)
+            else -> ParserErrorResult(ErrorResult("Could not parse expression: expression not recognized."), node.location)
         }
 
     fun parseAssignment(assignmentNode: ToylangMainAST.StatementNode.AssignmentNode, context: Context): Result =
         when(val expressionResult = this.parseExpression(assignmentNode.expression, context)){
             is WrappedResult<*> -> {
                 when(expressionResult.t){
-                    is ToylangP1ASTNode.StatementNode.ExpressionNode -> {
-                        WrappedResult(ToylangP1ASTNode.StatementNode.AssignmentNode(assignmentNode.location, expressionResult.t))
+                    is ToylangHIRElement.StatementNode.ExpressionNode -> {
+                        WrappedResult(ToylangHIRElement.StatementNode.AssignmentNode(assignmentNode.location, expressionResult.t))
                     }
                     null -> ErrorResult("Wrapped return result object was null")
                     else -> ErrorResult("Expression node came back wrong type ${expressionResult.t::class::qualifiedName}")
@@ -236,19 +211,19 @@ class GeneralParsingStage {
     fun parseLetNode(letNode: ToylangMainAST.StatementNode.LetNode, context: Context): Result{
         val ident = letNode.identifier.identifier
         val mutable = letNode.mutable
-        val type = if(letNode.type == null) null else ToylangP1ASTNode.TypeAnnotation(letNode.location, letNode.type.identifier.identifier)
+        val type = if(letNode.type == null) null else ToylangHIRElement.TypeAnnotation(letNode.location, letNode.type.identifier.identifier)
         return when(val assignmentResult = this.parseAssignment(letNode.assignment, context)){
             is WrappedResult<*> -> {
                 when(assignmentResult.t){
-                    is ToylangP1ASTNode.StatementNode.AssignmentNode -> {
+                    is ToylangHIRElement.StatementNode.AssignmentNode -> {
                         when(context){
                             is GlobalContext -> {
-                                val variable = ToylangP1ASTNode.StatementNode.VariableNode.GlobalVariableNode(letNode.location, ident, mutable, type, assignmentResult.t)
+                                val variable = ToylangHIRElement.StatementNode.VariableNode.GlobalVariableNode(letNode.location, ident, mutable, type, assignmentResult.t)
                                 context.globalVariables.add(variable)
                                 WrappedResult(variable)
                             }
                             is FunctionContext -> {
-                                val variable = ToylangP1ASTNode.StatementNode.VariableNode.LocalVariableNode(letNode.location, ident, mutable, type, assignmentResult.t)
+                                val variable = ToylangHIRElement.StatementNode.VariableNode.LocalVariableNode(letNode.location, ident, mutable, type, assignmentResult.t)
                                 context.localVariables.add(variable)
                                 WrappedResult(variable)
                             }
@@ -271,7 +246,7 @@ class GeneralParsingStage {
         val expression = when(val expressionResult = this.parseExpression(statementNode.expression, context)){
             is WrappedResult<*> -> {
                 when(expressionResult.t){
-                    is ToylangP1ASTNode.StatementNode.ExpressionNode -> expressionResult.t
+                    is ToylangHIRElement.StatementNode.ExpressionNode -> expressionResult.t
                     null -> return ErrorResult("Expression node came back null")
                     else -> return ErrorResult("Expression node came back wrong type: ${expressionResult.t::class.qualifiedName}")
                 }
@@ -283,7 +258,7 @@ class GeneralParsingStage {
             is ParserErrorResult<*> -> return ErrorResult("Parser error occurred while parsing return statement: $expressionResult")
             else -> return ErrorResult("Unrecognized result: $expressionResult")
         }
-        return WrappedResult(ToylangP1ASTNode.StatementNode.ReturnStatementNode(statementNode.location, expression))
+        return WrappedResult(ToylangHIRElement.StatementNode.ReturnStatementNode(statementNode.location, expression))
     }
 
     fun parseCodeblockStatement(statementNode: ToylangMainAST.StatementNode, context: FunctionContext): Result{
@@ -334,7 +309,7 @@ class GeneralParsingStage {
             when(val codeblockStatementResult = this.parseCodeblockStatement(it, context)){
                 is WrappedResult<*> -> {
                     when(codeblockStatementResult.t){
-                        is ToylangP1ASTNode.StatementNode -> codeblockStatementResult.t
+                        is ToylangHIRElement.StatementNode -> codeblockStatementResult.t
                         null -> return ErrorResult("Codeblock statement node came back null")
                         else -> return ErrorResult("Codeblock statement node came back as wrong type: ${codeblockStatementResult.t::class.qualifiedName}")
                     }
@@ -344,7 +319,7 @@ class GeneralParsingStage {
                 else -> return ErrorResult("Unrecognized result: $codeblockStatementResult")
             }
         }
-        return WrappedResult(ToylangP1ASTNode.CodeBlockNode(codeblock.location, statements))
+        return WrappedResult(ToylangHIRElement.CodeBlockNode(codeblock.location, statements))
     }
 
     fun parseFunctionParamNode(paramNode: ToylangMainAST.FunctionParamNode, context: FunctionContext): Result{
@@ -353,25 +328,25 @@ class GeneralParsingStage {
         return when(val symbol = context.findIdentifier(ident)){
              is WrappedResult<*> -> {
                  when(symbol.t){
-                     is ToylangP1ASTNode.FunctionParamNode -> ErrorResult("Function param with identifier $ident already exists for current function")
+                     is ToylangHIRElement.FunctionParamNode -> ErrorResult("Function param with identifier $ident already exists for current function")
                      else -> ParserErrorResult(ErrorResult("Function param with identifier $ident already exists"), paramNode.location)
                  }
              }
-            else -> WrappedResult(ToylangP1ASTNode.FunctionParamNode(paramNode.location, ident, ToylangP1ASTNode.TypeAnnotation(paramNode.location, type)))
+            else -> WrappedResult(ToylangHIRElement.FunctionParamNode(paramNode.location, ident, ToylangHIRElement.TypeAnnotation(paramNode.location, type)))
         }
     }
 
     fun parseFunctionDeclNode(functionDeclNode: ToylangMainAST.StatementNode.FunctionDeclNode, context: GlobalContext): Result{
         val ident = functionDeclNode.identifier.identifier
-        val type = ToylangP1ASTNode.TypeAnnotation(functionDeclNode.location, functionDeclNode.returnType?.identifier?.identifier ?: "Unit")
+        val type = ToylangHIRElement.TypeAnnotation(functionDeclNode.location, functionDeclNode.returnType?.identifier?.identifier ?: "Unit")
         val oldcodeblock = functionDeclNode.codeBlock
         val localContext = FunctionContext(context)
-        val localVariables = arrayListOf<ToylangP1ASTNode.StatementNode.VariableNode.LocalVariableNode>()
+        val localVariables = arrayListOf<ToylangHIRElement.StatementNode.VariableNode.LocalVariableNode>()
         localContext.params.addAll(functionDeclNode.params.map {
             when(val paramResult = this.parseFunctionParamNode(it, localContext)){
                 is WrappedResult<*> -> {
                     when(paramResult.t){
-                        is ToylangP1ASTNode.FunctionParamNode -> {
+                        is ToylangHIRElement.FunctionParamNode -> {
                             paramResult.t
                         }
                         null -> return ErrorResult("Function param node came back null")
@@ -386,7 +361,7 @@ class GeneralParsingStage {
         val newcodeblock = when(val codeblockParseResult = this.parseCodeblock(oldcodeblock, localContext)){
             is WrappedResult<*> -> {
                 when(codeblockParseResult.t){
-                    is ToylangP1ASTNode.CodeBlockNode -> codeblockParseResult.t
+                    is ToylangHIRElement.CodeBlockNode -> codeblockParseResult.t
                     null -> return ErrorResult("Codeblock node came back null")
                     else -> return ErrorResult("Codeblock node came back as wrong type: ${codeblockParseResult.t::class.qualifiedName}")
                 }
@@ -397,10 +372,10 @@ class GeneralParsingStage {
         }.apply {
             this.statements.forEach {
                 when(it){
-                    is ToylangP1ASTNode.StatementNode.VariableNode.LocalVariableNode -> localVariables.add(it)
+                    is ToylangHIRElement.StatementNode.VariableNode.LocalVariableNode -> localVariables.add(it)
                 }
             }
         }
-        return WrappedResult(ToylangP1ASTNode.StatementNode.FunctionDeclNode(functionDeclNode.location, ident, type, newcodeblock, localContext))
+        return WrappedResult(ToylangHIRElement.StatementNode.FunctionDeclNode(functionDeclNode.location, ident, type, newcodeblock, localContext))
     }
 }

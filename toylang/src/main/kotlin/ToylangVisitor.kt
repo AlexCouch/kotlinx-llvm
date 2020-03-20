@@ -1,4 +1,4 @@
-import com.couch.kotlinx.ast.Location
+import parsing.ast.Location
 import parsing.ToylangMainAST
 import com.couch.toylang.ToylangParser
 import com.couch.toylang.ToylangParserBaseVisitor

@@ -1,0 +1,3 @@
+fn factorial(n: Int): Int{
+    return 1;
+};

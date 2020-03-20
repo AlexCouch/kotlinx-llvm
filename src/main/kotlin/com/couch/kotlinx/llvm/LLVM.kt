@@ -10,6 +10,9 @@ fun main(){
         val globalVar = createGlobalVariable("testVar", Type.Int32Type()){
             createInt32Value(10)
         }
+        val decimalPrintStr = createGlobalVariable("dPrint", Type.ArrayType(Type.Int8Type(), "%d\\\n".length)){
+            createStringValue("%d\n")
+        }
 
         val printf = this.createFunction("printf"){
             this.returnType = Type.Int32Type()
@@ -88,20 +91,30 @@ fun main(){
                             arrayOf(createInt32Value(10), globalVar.value)
                         }
                     }
-                    val calcAvVar = createLocalVariable("addCallRes", Type.Int32Type()){
-                        this.buildFunctionCall("addFuncCall", add){
-                            arrayOf(createInt32Value(10), globalVar.value)
+                    val calcAvVar = createLocalVariable("calcAvCallRes", Type.Int32Type()){
+                        this.buildFunctionCall("calcAvFuncCall", calcAverage){
+                            arrayOf(createInt32Value(10), createInt32Value(8), globalVar.value)
                         }
                     }
                     val gepCast = this.buildBitcast(gep, Type.PointerType(Type.Int8Type()), "gepCast")
 //                    LLVM.LLVMBuildCall(this.builder, printfFunc, PointerPointer(*arrayOf(gepCast.value, add.value.value)), 2, "call")
-                    this.buildFunctionCall("call", printf){
+                    val call1 = this.buildFunctionCall("call", printf){
                         val addValue = this.buildLoad(addVar.value, "")
                         arrayOf(gepCast, addValue)
                     }
-                    this.buildFunctionCall("call", printf){
+                    val gepDPrint = this.buildGetElementPointer("decimalPrint_gep"){
+                        getGlobalReference(decimalPrintStr.name)?.value ?: decimalPrintStr.value
+                    }
+                    val gepDPrintCast = this.buildBitcast(gepDPrint, Type.PointerType(Type.Int8Type()), "decimalPrint_cast")
+                    this.buildFunctionCall("printf2", printf){
+                        arrayOf(gepDPrintCast, call1)
+                    }
+                    val call2 = this.buildFunctionCall("call", printf){
                         val addValue = this.buildLoad(calcAvVar.value, "")
                         arrayOf(gepCast, addValue)
+                    }
+                    this.buildFunctionCall("printf3", printf){
+                        arrayOf(gepDPrintCast, call2)
                     }
                     this.addReturnStatement {
                         createInt32Value(0)
