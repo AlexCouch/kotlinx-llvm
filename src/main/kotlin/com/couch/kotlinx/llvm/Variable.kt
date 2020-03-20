@@ -3,7 +3,6 @@ package com.couch.kotlinx.llvm
 import org.bytedeco.javacpp.PointerPointer
 import org.bytedeco.llvm.LLVM.LLVMValueRef
 import org.bytedeco.llvm.global.LLVM
-import org.omg.CORBA.NameValuePair
 
 sealed class Variable(open val name: String, open val type: Type){
     open val value: Value? = null

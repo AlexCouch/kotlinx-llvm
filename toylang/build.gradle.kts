@@ -82,6 +82,7 @@ dependencies{
     compile(rootProject)
 //    compile(project(":toylang"))
     compile("com.github.strumenta:kolasu:$kolasuVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.5")
 }
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {

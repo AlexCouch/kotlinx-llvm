@@ -1,5 +1,6 @@
 let hello = "Hello";
 
-fn main(){
+fn main(args: Int): Int{
     printf(hello);
+    return 0;
 };

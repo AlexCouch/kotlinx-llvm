@@ -60,5 +60,7 @@ abstract class Parse<in IN: ToylangASTNode, out OUT: Result>{
         return this.parseElement(node, context)
     }
 
-
+    open fun parseStringLiteral(node: IN, context: Context): OUT{
+        return this.parseElement(node, context)
+    }
 }

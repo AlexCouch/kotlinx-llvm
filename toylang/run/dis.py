@@ -1,7 +1,7 @@
 import subprocess
-
+from pathlib import Path
 import os
-files = [f for f in os.listdir('.') if os.path.isfile(f) and os.path.splitext(f)[-1] == '.bc']
-for f in files:
+
+for f in Path('.').glob('**/*.bc'):
     output = subprocess.check_output('llvm-dis {}'.format(f))
     print(output)
