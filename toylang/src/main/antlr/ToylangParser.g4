@@ -15,8 +15,8 @@ typeAnnotation          : COLON type #fnType;
 fnDeclaration           : FN IDENT fnParams typeAnnotation? codeBlock;
 
 fnParam                 : IDENT COLON type;
-fnParams                : LPAREN ((fnParam) | (fnParam COMMA fnParam))* RPAREN;
-fnArgs                  : LPAREN ((expression) | (expression COMMA expression))* RPAREN;
+fnParams                : LPAREN (fnParam (COMMA fnParam)*) RPAREN;
+fnArgs                  : LPAREN (expression (COMMA expression)*)* RPAREN;
 codeblockStatement      : (letDeclaration | expression | returnStatement)? SEMICOLON;
 codeBlockStatements     : block = codeblockStatement*;
 codeBlock               : LCURLBRACE codeBlockStatements RCURLBRACE;

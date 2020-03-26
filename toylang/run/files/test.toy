@@ -5,5 +5,5 @@ fn average(x: Int, y: Int, z: Int): Int{
 
 fn main(args: Int): Int{
     print("Hello");
-    printf(average(5, 3, 4));
+    print(average(5, 3, 4));
 };
