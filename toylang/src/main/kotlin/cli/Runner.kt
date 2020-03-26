@@ -15,8 +15,6 @@ import org.bytedeco.llvm.global.LLVM
 import parsing.GlobalContext
 import parsing.ParserErrorResult
 import parsing.ToylangMainAST
-import parsing.hir.HIRGenerator
-import parsing.hir.ToylangHIRElement
 import parsing.llvm.ASTToLLVM
 import parsing.typeck.TypecheckingParser
 import java.io.BufferedInputStream
@@ -29,7 +27,9 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.internal.HexConverter
 import parsing.ast.ToylangASTNode
+import parsing.hir.*
 import java.util.concurrent.TimeUnit
 
 fun runParser(file: File): Result{
@@ -53,11 +53,12 @@ fun runParser(file: File): Result{
             return ErrorResult("Unrecognized result while parsing grammar to general AST: $visitorResult")
         }
     }
+
     rootNode.assignParents()
     return WrappedResult(rootNode)
 }
 
-fun genHIR(rootnode: ToylangMainAST.RootNode): Result{
+/*fun genHIR(rootnode: ToylangMainAST.RootNode): Result{
     val generalParsingStage = HIRGenerator()
     val phase1AST = when(val result = generalParsingStage.parseFile(rootnode, GlobalContext())){
         is WrappedResult<*> -> {
@@ -77,7 +78,7 @@ fun genHIR(rootnode: ToylangMainAST.RootNode): Result{
     }
     phase1AST.assignParents()
     return WrappedResult(phase1AST)
-}
+}*/
 
 fun compile(file: File, objectFilePaths: ArrayList<String>): Result{
     val ast = when (val result = runParser(file)) {
@@ -90,7 +91,16 @@ fun compile(file: File, objectFilePaths: ArrayList<String>): Result{
         is ErrorResult -> return result
         else -> return ErrorResult("Unrecogtnized result: $result")
     }
-    val hir = when (val result = genHIR(ast)) {
+    ast.metadata = ToylangMainAST.MetadataNode(file.absolutePath, ToylangTarget.LLVM)
+    val stream = ToylangMainASTBytecode().dump(ToylangMainASTBytecodeSerialization, ast)
+    println(when(val result = stringifyBytecode(stream)){
+        is WrappedResult<*> -> result.t
+        is ErrorResult -> {
+            result.toString()
+        }
+        else -> "Could not get stringified bytecode from stringify function: Unrecognized result: $result"
+    })
+    /*val hir = when (val result = genHIR(ast)) {
         is WrappedResult<*> -> when (result.t) {
             is ToylangHIRElement.RootNode -> {
                 result.t
@@ -148,7 +158,7 @@ fun compile(file: File, objectFilePaths: ArrayList<String>): Result{
     if(exitCode != 0){
         return ErrorResult("LLC returned non-zero exit code: $exitCode")
     }
-    objectFilePaths.add("${outfile.parent}/${outfile.nameWithoutExtension}.s")
+    objectFilePaths.add("${outfile.parent}/${outfile.nameWithoutExtension}.s")*/
     return OKResult
 }
 
@@ -172,12 +182,19 @@ fun runCompiler(paths: List<String>, outputPath: String): Result {
         }
 
     }
-    val output = "$outputPath.exe"
+    /*val output = "$outputPath.exe"
     val clangProcess = ProcessBuilder().command("clang", *objectFilePaths.toTypedArray(), "-o", output).inheritIO()
     val clang = clangProcess.start()
     val exitCode = clang.waitFor()
     if(exitCode != 0){
         return ErrorResult("Clang returned with non-zero exit code: $exitCode")
     }
-    return WrappedResult(output)
+    return WrappedResult(output)*/
+    return OKResult
+}
+
+fun runVM(paths: List<String>): Result{
+
+
+    return OKResult
 }

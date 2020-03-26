@@ -9,14 +9,7 @@ import parsing.typeck.Type
 
 sealed class ToylangHIRElement(override val location: Location): ToylangASTNode(location){
     data class RootNode(override val location: Location, val statements: List<StatementNode>, override val context: GlobalContext): ToylangHIRElement(location), ProvidesContext
-    data class TypeAnnotation(override val location: Location, val typeName: String): ToylangHIRElement(location){
-        companion object {
-            val NONE = Type("None")
-            val STRING = Type("String")
-            val INTEGER = Type("Int")
-            val DECIMAL = Type("Float")
-        }
-    }
+    data class TypeAnnotation(override val location: Location, val typeName: String): ToylangHIRElement(location)
     sealed class StatementNode(override val location: Location): ToylangHIRElement(location){
         sealed class VariableNode(
                 override val location: Location,

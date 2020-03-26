@@ -27,9 +27,5 @@ fun main(args: Array<String>){
         }
         val program = ProcessBuilder(outputPath).inheritIO().start()
         val exitCode = program.waitFor()
-        /*if(exitCode != 0){
-            println("Compiled program returned with non-zero exit status: $exitCode")
-            return
-        }*/
     }
 }

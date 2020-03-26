@@ -339,12 +339,11 @@ class ASTToLLVM{
                 }
             }
         }
-        context.functions.add(functionDeclNode)
         val func = this.createFunction(functionDeclNode.identifier){
             this.returnType = this@ASTToLLVM.convertTypeIdentifier(functionDeclNode.type.typeName)
             functionDeclNode.context.params.forEach {
-                this.createFunctionParam(it.identifier) {
-                    this@ASTToLLVM.convertTypeIdentifier(it.type.typeName)
+                this.createFunctionParam(it.identifier.identifier) {
+                    this@ASTToLLVM.convertTypeIdentifier(it.type.identifier.identifier)
                 }
             }
             this.addBlock("local_${functionDeclNode.identifier}_block"){

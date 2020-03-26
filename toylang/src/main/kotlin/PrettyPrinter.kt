@@ -15,6 +15,9 @@ class PrettyPrinter{
                     this.sb.append(line.value)
                 }
             }else{
+                (1..this.indentationLevel).forEach {
+                    this.sb.append("\t")
+                }
                 sb.append(string)
             }
         }else{
@@ -36,7 +39,7 @@ class PrettyPrinter{
 
 }
 
-fun buildPrettyString(block: PrettyPrinter.()->Unit): String{
+inline fun buildPrettyString(block: PrettyPrinter.()->Unit): String{
     val prettyPrinter = PrettyPrinter()
     prettyPrinter.block()
     return prettyPrinter.toString()

@@ -13,13 +13,13 @@ class TypecheckingParser: Parse<ToylangHIRElement, Result>() {
     override fun parseElement(node: ToylangHIRElement, context: Context): Result {
         return when(node){
             is ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralExpression -> {
-                WrappedResult(ToylangHIRElement.TypeAnnotation.STRING)
+                WrappedResult(Type.STRING)
             }
             is ToylangHIRElement.StatementNode.ExpressionNode.IntegerLiteralExpression -> {
-                WrappedResult(ToylangHIRElement.TypeAnnotation.INTEGER)
+                WrappedResult(Type.INTEGER)
             }
             is ToylangHIRElement.StatementNode.ExpressionNode.DecimalLiteralExpression -> {
-                WrappedResult(ToylangHIRElement.TypeAnnotation.DECIMAL)
+                WrappedResult(Type.DECIMAL)
             }
             else -> ParserErrorResult(ErrorResult("Could not recognize element during type checking: $node"), node.location)
         }
@@ -291,13 +291,13 @@ fun ToylangHIRElement.StatementNode.ExpressionNode.findType(): Result{
             }
         }
         is ToylangHIRElement.StatementNode.ExpressionNode.StringLiteralExpression -> {
-            WrappedResult(ToylangHIRElement.TypeAnnotation.STRING)
+            WrappedResult(Type.STRING)
         }
         is ToylangHIRElement.StatementNode.ExpressionNode.IntegerLiteralExpression -> {
-            WrappedResult(ToylangHIRElement.TypeAnnotation.INTEGER)
+            WrappedResult(Type.INTEGER)
         }
         is ToylangHIRElement.StatementNode.ExpressionNode.DecimalLiteralExpression -> {
-            WrappedResult(ToylangHIRElement.TypeAnnotation.DECIMAL)
+            WrappedResult(Type.DECIMAL)
         }
         is ToylangHIRElement.StatementNode.ExpressionNode.FunctionCallNode -> {
             when(val result = this.findType()){

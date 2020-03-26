@@ -1,11 +1,12 @@
 import parsing.ast.Location
-import parsing.ToylangMainAST
 import com.couch.toylang.ToylangParser
 import com.couch.toylang.ToylangParserBaseVisitor
 import org.antlr.v4.kotlinruntime.ast.Point
-import parsing.ParserErrorResult
+import parsing.*
 
 class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
+    private var currentContext: Context = GlobalContext()
+
     override fun visitFunctionCall(ctx: ToylangParser.FunctionCallContext): Result {
         val fnName = ctx.IDENT()!!.symbol!!.text!!
         val fnArgs = ctx.findFnArgs()!!
@@ -33,11 +34,23 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
     }
 
     override fun visitToylangFile(ctx: ToylangParser.ToylangFileContext): Result {
+        val rootContext = GlobalContext()
+        if(this.currentContext !is GlobalContext) this.currentContext = GlobalContext()
         val statements = ctx.findLine().map {
             when(val result = this.visitStatement(it.findStatement()!!)){
                 is WrappedResult<*> -> {
                     when(result.t){
-                        is ToylangMainAST.StatementNode -> result.t
+                        is ToylangMainAST.StatementNode -> {
+                            val statement = result.t
+                            when(statement){
+                                is ToylangMainAST.StatementNode.VariableNode.GlobalVariableNode -> rootContext.globalVariables.add(statement)
+                                is ToylangMainAST.StatementNode.FunctionDeclNode -> {
+                                    rootContext.functions.add(statement)
+                                    this.currentContext = rootContext
+                                }
+                            }
+                            statement
+                        }
                         else -> return ErrorResult("Did not get statement node from statement visitor in initial parser")
                     }
                 }
@@ -54,7 +67,7 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
                 else -> return ErrorResult("Unknown result: $result")
             }
         }
-        val root = ToylangMainAST.RootNode(Location(ctx.position?.start ?: Point(0, 0), ctx.position?.end ?: Point(0, 0)), statements)
+        val root = ToylangMainAST.RootNode(Location(ctx.position?.start ?: Point(0, 0), ctx.position?.end ?: Point(0, 0)), statements, this.currentContext)
         return WrappedResult(root)
     }
 
@@ -131,15 +144,26 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
             is ErrorResult -> return ParserErrorResult(result, location)
             else -> return ParserErrorResult(ErrorResult("Unrecognized result: $result"), location)
         }
-        return WrappedResult(
-                ToylangMainAST.StatementNode.LetNode(
+        return if(this.currentContext is GlobalContext)
+            WrappedResult(
+                ToylangMainAST.StatementNode.VariableNode.GlobalVariableNode(
                         location,
                         identifierNode,
                         mutable,
                         typeAnnotation,
                         assignmentNode
                 )
-        )
+            )
+        else
+            WrappedResult(
+                    ToylangMainAST.StatementNode.VariableNode.LocalVariableNode(
+                            location,
+                            identifierNode,
+                            mutable,
+                            typeAnnotation,
+                            assignmentNode
+                    )
+            )
     }
 
     override fun visitAssignment(ctx: ToylangParser.AssignmentContext): Result {
@@ -562,6 +586,7 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
     }
 
     override fun visitFnDeclaration(ctx: ToylangParser.FnDeclarationContext): Result {
+        this.currentContext = FunctionContext(this.currentContext)
         val params = ctx.findFnParams()?.findFnParam()?.map{
             when(val result = this.visitFnParam(it)){
                 is WrappedResult<*> -> {
@@ -655,7 +680,7 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
                 return WrappedResult(ToylangMainAST.StatementNode.FunctionDeclNode(Location(
                         ctx.start?.startPoint() ?: Point(0, 0),
                         ctx.stop?.startPoint() ?: Point(0, 0)
-                ), identifier, params!!, codeblock, returnType))
+                ), identifier, params!!, codeblock, returnType, this.currentContext))
     }
 
     override fun visitReturnStatement(ctx: ToylangParser.ReturnStatementContext): Result {

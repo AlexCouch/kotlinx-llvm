@@ -1,6 +1,9 @@
-let hello = "Hello";
+fn average(x: Int, y: Int, z: Int): Int{
+    let sum = x + y + z;
+    return sum / 3;
+};
 
 fn main(args: Int): Int{
-    printf(hello);
-    return 0;
+    print("Hello");
+    printf(average(5, 3, 4));
 };
