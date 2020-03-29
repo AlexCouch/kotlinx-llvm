@@ -10,6 +10,35 @@ MUT                 : 'mut';
 FN                  : 'fn';
 RETURN              : 'return';
 
+//Control flow
+IF                  : 'if';
+ELSE                : 'else';
+FOR                 : 'for';
+FOREACH             : 'foreach';
+LOOP                : 'loop';
+WHILE               : 'while';
+BREAK               : 'break';
+CONTINUE            : 'continue';
+
+//Types
+TRAIT                : 'trait';
+STRUCT              : 'struct';
+RECORDS             : 'record';
+
+/*
+    trait Person{
+        name: String,
+        address: Address
+    };
+
+    record Address(homeNumber: Int, streetName: String, cityName: String);
+
+    let alex = Person{
+        'Alex',
+        Address(..., ..., ...)
+    };
+*/
+
 IDENT               : [a-zA-Z][A-Za-z0-9_]*;
 
 INTLITERAL          : [0-9]+;

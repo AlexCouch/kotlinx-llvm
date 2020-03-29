@@ -4,7 +4,6 @@ import Result
 import ErrorResult
 import OKResult
 import WrappedResult
-import parsing.hir.ToylangHIRElement
 
 interface Context{
     val parentContext: Context?

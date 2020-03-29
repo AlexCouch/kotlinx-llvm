@@ -4,33 +4,24 @@ import ErrorResult
 import OKResult
 import ToylangVisitor
 import WrappedResult
-import com.couch.kotlinx.llvm.Module
 import com.couch.toylang.ToylangLexer
 import com.couch.toylang.ToylangParser
 import com.strumenta.kolasu.model.assignParents
 import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.CommonTokenStream
-import org.bytedeco.javacpp.BytePointer
-import org.bytedeco.llvm.global.LLVM
-import parsing.GlobalContext
 import parsing.ParserErrorResult
 import parsing.ToylangMainAST
-import parsing.llvm.ASTToLLVM
-import parsing.typeck.TypecheckingParser
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 import Result
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.*
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.io.core.ByteReadPacket
 import kotlinx.serialization.internal.HexConverter
-import parsing.ast.ToylangASTNode
 import parsing.hir.*
-import java.util.concurrent.TimeUnit
+import parsing.mir.MIRBytecode
+import parsing.mir.MIRBytecodeSerialization
+import parsing.vm.VirtualMachine
 
 fun runParser(file: File): Result{
     val `in` = BufferedInputStream(FileInputStream(file))
@@ -80,6 +71,7 @@ fun runParser(file: File): Result{
     return WrappedResult(phase1AST)
 }*/
 
+@ExperimentalStdlibApi
 fun compile(file: File, objectFilePaths: ArrayList<String>): Result{
     val ast = when (val result = runParser(file)) {
         is WrappedResult<*> -> when (result.t) {
@@ -93,75 +85,19 @@ fun compile(file: File, objectFilePaths: ArrayList<String>): Result{
     }
     ast.metadata = ToylangMainAST.MetadataNode(file.absolutePath, ToylangTarget.LLVM)
     val stream = ToylangMainASTBytecode().dump(ToylangMainASTBytecodeSerialization, ast)
-    println(when(val result = stringifyBytecode(stream)){
-        is WrappedResult<*> -> result.t
-        is ErrorResult -> {
-            result.toString()
-        }
-        else -> "Could not get stringified bytecode from stringify function: Unrecognized result: $result"
-    })
-    /*val hir = when (val result = genHIR(ast)) {
-        is WrappedResult<*> -> when (result.t) {
-            is ToylangHIRElement.RootNode -> {
-                result.t
-            }
-            else -> {
-                return ErrorResult("Did not get hir from generator")
-            }
-        }
-        is ErrorResult -> {
-            return result
-        }
-        else -> return ErrorResult("Unrecogtnized result: $result")
+    println("HIR: ${HexConverter.printHexBinary(stream)}")
+    val mir = MIRBytecode().dump(MIRBytecodeSerialization, ByteReadPacket(stream))
+    println("MIR: ${HexConverter.printHexBinary(mir)}")
+    val vm = VirtualMachine()
+    when(val result = vm.init(ByteReadPacket(mir))){
+        is ErrorResult -> return ErrorResult("The VM encountered an error", result)
     }
-    val typechecking = TypecheckingParser()
-    when (val typeCheckResult = typechecking.parseFile(hir, hir.context)) {
-        is ErrorResult -> {
-            return ErrorResult("An error occurred during type checking: $typeCheckResult")
-        }
-        is ParserErrorResult<*> -> {
-            return ErrorResult("A parser error occurred during type checking: $typeCheckResult")
-        }
 
-    }
-    val astToLLVM = ASTToLLVM()
-    val module = when (val result = astToLLVM.startGeneratingLLVM(file.name, hir)) {
-        is WrappedResult<*> -> {
-            when (result.t) {
-                is Module -> result.t
-                else -> {
-                    return ErrorResult("LLVM generation result came back abnormal: $result")
-                }
-            }
-        }
-        is ErrorResult -> {
-            return ErrorResult("An error occurred while parsing phase 1 AST to LLVM", result)
-        }
-        else -> {
-            return ErrorResult("Unrecognized result while parsing phase 1 AST to LLVM: $result")
-        }
-    }
-    val buffer = BytePointer()
-    LLVM.LLVMVerifyModule(module.module, LLVM.LLVMAbortProcessAction, buffer)
-    LLVM.LLVMDisposeMessage(buffer)
-    val outfile = File("${System.getProperty("user.dir")}/out/${file.nameWithoutExtension}.bc")
-    if (!outfile.exists() || !outfile.parentFile.exists()) {
-        outfile.parentFile.mkdirs()
-    }
-    val result = LLVM.LLVMWriteBitcodeToFile(module.module, outfile.path)
-    if (result != 0) {
-        println("Write bitcode to file operation returned with non-zero exit status: $result")
-    }
-    val llcP = ProcessBuilder().command("llc", outfile.path).inheritIO()
-    val llc = llcP.start()
-    val exitCode = llc.waitFor()
-    if(exitCode != 0){
-        return ErrorResult("LLC returned non-zero exit code: $exitCode")
-    }
-    objectFilePaths.add("${outfile.parent}/${outfile.nameWithoutExtension}.s")*/
+
     return OKResult
 }
 
+@ExperimentalStdlibApi
 @ExperimentalCoroutinesApi
 fun runCompiler(paths: List<String>, outputPath: String): Result {
     val objectFilePaths = arrayListOf<String>()
@@ -193,8 +129,52 @@ fun runCompiler(paths: List<String>, outputPath: String): Result {
     return OKResult
 }
 
-fun runVM(paths: List<String>): Result{
+@ExperimentalStdlibApi
+fun run(file: File): Result{
+    val ast = when (val result = runParser(file)) {
+        is WrappedResult<*> -> when (result.t) {
+            is ToylangMainAST.RootNode -> {
+                result.t
+            }
+            else -> return ErrorResult("Could not get ast from parser")
+        }
+        is ErrorResult -> return result
+        else -> return ErrorResult("Unrecogtnized result: $result")
+    }
+    ast.metadata = ToylangMainAST.MetadataNode(file.absolutePath, ToylangTarget.VM)
+    val stream = ToylangMainASTBytecode().dump(ToylangMainASTBytecodeSerialization, ast)
+    println("HIR: ${HexConverter.printHexBinary(stream)}")
+    val mir = MIRBytecode().dump(MIRBytecodeSerialization, ByteReadPacket(stream))
+    println("MIR: ${HexConverter.printHexBinary(mir)}")
+    val vm = VirtualMachine()
+    when(val result = vm.init(ByteReadPacket(mir))){
+        is ErrorResult -> return ErrorResult("The VM encountered an error", result)
+    }
+    when(val result = vm.start()){
+        is ErrorResult -> return ErrorResult("The VM runtime encountered an error", result)
+    }
+    return OKResult
+}
 
+@ExperimentalStdlibApi
+fun runVM(paths: List<String>): Result{
+    paths.forEach {
+        val file = File(it)
+        if(file.isDirectory) {
+            file.listFiles()?.forEach { f ->
+                when(val result = run(f)){
+                    is ErrorResult -> return result
+                    is ParserErrorResult<*> -> return ErrorResult("An error occurred during parsing: $result")
+                }
+            }
+        }else{
+            when(val result = run(file)){
+                is ErrorResult -> return result
+                is ParserErrorResult<*> -> return ErrorResult("An error occurred during parsing: $result")
+            }
+        }
+
+    }
 
     return OKResult
 }

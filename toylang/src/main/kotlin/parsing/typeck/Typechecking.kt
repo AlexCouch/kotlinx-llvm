@@ -1,5 +1,6 @@
 package parsing.typeck
 
+/*
 import ErrorResult
 import OKResult
 import Result
@@ -352,4 +353,4 @@ fun ToylangHIRElement.StatementNode.findType(): Result{
         is ToylangHIRElement.StatementNode.ExpressionNode -> this.findType()
         else -> ErrorResult("Could not recognized statement: $this")
     }
-}
+}*/

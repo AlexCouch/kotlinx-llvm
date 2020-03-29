@@ -450,11 +450,14 @@ fun stringifyBytecode(byteArray: ByteArray): Result{
     })
 }
 
-fun Input.readStringUntilDelimiter(vararg delimiters: Byte): String = buildString{
+fun Input.readStringUntilDelimiter(vararg delimiters: Byte, inclusive: Boolean = false): String = buildString{
     var byte: Byte
     while(true){
         byte = this@readStringUntilDelimiter.tryPeek().toByte()
         if(byte in delimiters){
+            if(inclusive){
+                this@readStringUntilDelimiter.readByte()
+            }
             break
         }
         byte = this@readStringUntilDelimiter.readByte()

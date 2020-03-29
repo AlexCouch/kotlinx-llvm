@@ -586,6 +586,13 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
     }
 
     override fun visitFnDeclaration(ctx: ToylangParser.FnDeclarationContext): Result {
+        val location = Location(
+                ctx.start?.startPoint() ?: Point(0, 0),
+                ctx.stop?.startPoint() ?: Point(0, 0)
+        )
+        if(ctx.exception != null){
+            return ParserErrorResult(ErrorResult("An ANTLR exception occurred:\n\t${ctx.exception}\n\tOffending Token: {\n\t\tName: ${ctx.exception?.offendingToken?.text} at ${ctx.exception?.offendingToken?.startPoint()}"), location)
+        }
         this.currentContext = FunctionContext(this.currentContext)
         val params = ctx.findFnParams()?.findFnParam()?.map{
             when(val result = this.visitFnParam(it)){
@@ -593,23 +600,14 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
                     when(result.t) {
                         is ToylangMainAST.FunctionParamNode -> result.t
                         null -> return ErrorResult("Function param node came back null:\n" +
-                                "Line: ${Location(
-                                        ctx.start?.startPoint() ?: Point(0, 0),
-                                        ctx.stop?.startPoint() ?: Point(0, 0)
-                                )}")
+                                "Line: $location")
                         else -> return ErrorResult("Wrong type: ${result.t::class.qualifiedName}:\n" +
-                                "Line: ${Location(
-                                        ctx.start?.startPoint() ?: Point(0, 0),
-                                        ctx.stop?.startPoint() ?: Point(0, 0)
-                                )}")
+                                "Line: $location")
                     }
                 }
                 is ErrorResult -> {
                     return ErrorResult("Could not get function param node from fn param visitor:\n" +
-                            "Line: ${Location(
-                                    ctx.start?.startPoint() ?: Point(0, 0),
-                                    ctx.stop?.startPoint() ?: Point(0, 0)
-                            )}", result)
+                            "Line: $location", result)
                 }
                 else -> return ErrorResult("Unrecognized result: $result")
             }
@@ -639,15 +637,9 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
                 else
                     WrappedResult(
                             ToylangMainAST.TypeAnnotationNode(
-                                    Location(
-                                            ctx.start?.startPoint() ?: Point(0, 0),
-                                            ctx.stop?.startPoint() ?: Point(0, 0)
-                                    ),
+                                    location,
                                     ToylangMainAST.IdentifierNode(
-                                            Location(
-                                                    ctx.start?.startPoint() ?: Point(0, 0),
-                                                    ctx.stop?.startPoint() ?: Point(0, 0)
-                                            ),
+                                            location,
                                             "Unit"
                                     ))
                             )
@@ -657,30 +649,18 @@ class ToylangVisitor: ToylangParserBaseVisitor<Result>(){
                 when (returnTypeResult.t) {
                     is ToylangMainAST.TypeAnnotationNode -> returnTypeResult.t
                     null -> return ErrorResult("Function return type node came back null:\n" +
-                            "Line: ${Location(
-                                    ctx.start?.startPoint() ?: Point(0, 0),
-                                    ctx.stop?.startPoint() ?: Point(0, 0)
-                            )}")
+                            "Line: $location")
                     else -> return ErrorResult("Function return type node came back as the wrong type: ${returnTypeResult.t::class.qualifiedName}:\n" +
-                            "Line: ${Location(
-                                    ctx.start?.startPoint() ?: Point(0, 0),
-                                    ctx.stop?.startPoint() ?: Point(0, 0)
-                            )}")
+                            "Line: $location")
                 }
             }
             is ErrorResult -> {
                 return ErrorResult("Could not get return type node from return type visitor:\n" +
-                        "Line: ${Location(
-                                ctx.start?.startPoint() ?: Point(0, 0),
-                                ctx.stop?.startPoint() ?: Point(0, 0)
-                        )}", returnTypeResult)
+                        "Line: $location", returnTypeResult)
             }
             else -> return ErrorResult("Unrecognized result: $returnTypeResult")
         }
-                return WrappedResult(ToylangMainAST.StatementNode.FunctionDeclNode(Location(
-                        ctx.start?.startPoint() ?: Point(0, 0),
-                        ctx.stop?.startPoint() ?: Point(0, 0)
-                ), identifier, params!!, codeblock, returnType, this.currentContext))
+                return WrappedResult(ToylangMainAST.StatementNode.FunctionDeclNode(location, identifier, params!!, codeblock, returnType, this.currentContext))
     }
 
     override fun visitReturnStatement(ctx: ToylangParser.ReturnStatementContext): Result {

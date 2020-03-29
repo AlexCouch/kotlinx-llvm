@@ -1,4 +1,6 @@
 package parsing.llvm
+/*
+package parsing.llvm
 
 import Result
 import WrappedResult
@@ -10,7 +12,6 @@ import parsing.Context
 import parsing.FunctionContext
 import parsing.GlobalContext
 import parsing.ParserErrorResult
-import parsing.hir.ToylangHIRElement
 import kotlin.random.Random
 
 class ASTToLLVM{
@@ -404,4 +405,4 @@ class ASTToLLVM{
         }
         return WrappedResult(func)
     }
-}
+}*/

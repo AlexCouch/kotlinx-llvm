@@ -16,7 +16,7 @@ enum class ToylangTarget{
     LLVM
 }
 
-@Serializer(HIR::class)
+@Serializer(ToylangMainAST::class)
 object ToylangMainASTBytecodeSerialization : KSerializer<ToylangMainAST.RootNode>{
     override val descriptor: SerialDescriptor
         get() = SerialClassDescImpl("HIR")
@@ -185,6 +185,7 @@ class ToylangMainASTBytecode internal constructor(override val context: SerialMo
         fun encodeGlobalVariable(globalVar: ToylangMainAST.StatementNode.VariableNode.GlobalVariableNode){
             this.encoder.beginGlobalVar()
             this.encoder.identifier(globalVar.identifier.identifier)
+            this.encoder.type(globalVar.type?.identifier?.identifier ?: "Unknown")
             this.encodeAssignment(globalVar.assignment)
             this.encoder.encodeLocation(globalVar.location)
             this.encoder.endGlobalVar()
@@ -193,6 +194,7 @@ class ToylangMainASTBytecode internal constructor(override val context: SerialMo
         fun encodeLocalVariable(localVar: ToylangMainAST.StatementNode.VariableNode.LocalVariableNode){
             this.encoder.beginLocalVar()
             this.encoder.identifier(localVar.identifier.identifier)
+            this.encoder.type(localVar.type?.identifier?.identifier ?: "Unknown")
             this.encodeAssignment(localVar.assignment)
             this.encoder.encodeLocation(localVar.location)
             this.encoder.endLocalVar()
@@ -238,7 +240,9 @@ class ToylangMainASTBytecode internal constructor(override val context: SerialMo
         fun endFile() = packet.writeByte((END_FILE and 0xff).toByte())
         fun startFileDesc() = packet.writeByte((BEGIN_FILE_DESC and 0xff).toByte())
         fun startFileLocation() = packet.writeByte((BEGIN_FILE_LOCATION and 0xff).toByte())
-        fun setFileLocation(location: String) = packet.writeStringUtf8(location)
+        fun setFileLocation(location: String){
+            writeString(location, location.length)
+        }
         fun endFileLocation() = packet.writeByte((END_FILE_LOCATION and 0xff).toByte())
         fun startTargetType() = packet.writeByte((BEGIN_TARGET_TYPE and 0xff).toByte())
         fun setTargetTypeVM() = packet.writeByte((TARGET_TYPE_VM and 0xff).toByte())
@@ -249,9 +253,17 @@ class ToylangMainASTBytecode internal constructor(override val context: SerialMo
         //Data
         fun startData() = packet.writeByte((BEGIN_DATA and 0xff).toByte())
         fun endData() = packet.writeByte((END_DATA and 0xff).toByte())
+        fun writeString(string: String, length: Int){
+            packet.writeInt(length)
+            packet.writeStringUtf8(string)
+        }
         fun identifier(identifier: String){
             packet.writeByte((IDENTIFIER and 0xff).toByte())
-            packet.writeStringUtf8(identifier)
+            writeString(identifier, identifier.length)
+        }
+        fun type(typename: String){
+            packet.writeByte((TYPENAME and 0xff).toByte())
+            writeString(typename, typename.length)
         }
         fun encodeLocation(location: Location){
             LocationEncoder(this.packet){
@@ -290,7 +302,9 @@ class ToylangMainASTBytecode internal constructor(override val context: SerialMo
 
         //Function return type
         fun beginFunctionReturnType() = packet.writeByte((BEGIN_FUNCTION_RETURN_TYPE and 0xff).toByte())
-        fun setFunctionReturnType(typename: String) = packet.writeStringUtf8(typename)
+        fun setFunctionReturnType(typename: String){
+            writeString(typename, typename.length)
+        }
         fun endFunctionReturnType() = packet.writeByte((END_FUNCTION_RETURN_TYPE and 0xff).toByte())
 
         //Function body
@@ -388,27 +402,28 @@ class ToylangMainASTBytecode internal constructor(override val context: SerialMo
     }
     companion object: BinaryFormat{
         //Metadata stuff
-         const val BEGIN_FILE = 0xfe
-         const val BEGIN_FILE_DESC = 0x11
-         const val BEGIN_FILE_LOCATION = 0x61
-         const val END_FILE_LOCATION = 0x62
-         const val BEGIN_TARGET_TYPE = 0x63
-         const val TARGET_TYPE_VM = 0x71
-         const val TARGET_TYPE_LLVM = 0x72
-         const val END_TARGET_TYPE = 0x64
-         const val END_FILE_DESC = 0x12
-         const val END_FILE = 0xff
-         const val BEGIN_DATA = 0x13
-         const val END_DATA = 0x14
+        const val BEGIN_FILE = 0xfe
+        const val BEGIN_FILE_DESC = 0x11
+        const val BEGIN_FILE_LOCATION = 0x61
+        const val END_FILE_LOCATION = 0x62
+        const val BEGIN_TARGET_TYPE = 0x63
+        const val TARGET_TYPE_VM = 0x71
+        const val TARGET_TYPE_LLVM = 0x72
+        const val END_TARGET_TYPE = 0x64
+        const val END_FILE_DESC = 0x12
+        const val END_FILE = 0xff
+        const val BEGIN_DATA = 0x13
+        const val END_DATA = 0x14
         //Location
-         const val BEGIN_LOCATION = 0x15
-         const val BEGIN_LOCATION_START = 0x65
-         const val END_LOCATION_START = 0x66
-         const val BEGIN_LOCATION_STOP = 0x67
-         const val END_LOCATION_STOP = 0x68
-         const val END_LOCATION = 0x16
+        const val BEGIN_LOCATION = 0x15
+        const val BEGIN_LOCATION_START = 0x65
+        const val END_LOCATION_START = 0x66
+        const val BEGIN_LOCATION_STOP = 0x67
+        const val END_LOCATION_STOP = 0x68
+        const val END_LOCATION = 0x16
         //Misc
-         const val IDENTIFIER = 0x17
+        const val IDENTIFIER = 0x17
+        const val TYPENAME = 0x1a
 
         //Statements
          const val BEGIN_STATEMENT = 0x20

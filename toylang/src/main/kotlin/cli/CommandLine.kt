@@ -9,7 +9,7 @@ fun Array<String>.parseArgs(): CLIArgs{
     var outputPath = ""
     var runAfter = false
     val inPathPattern = Regex("--path=([\\w\\d\\W]+)")
-    val immediateModePattern = Regex("--run=vm")
+    val immediateModePattern = Regex("--immediate")
     val outPathPattern = Regex("--output=([\\w\\d\\W]+)")
     val runAfterPattern = Regex("--after")
     this@parseArgs.forEach {
