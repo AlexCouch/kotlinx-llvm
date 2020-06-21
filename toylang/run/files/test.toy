@@ -1,6 +1,23 @@
 let hello = "Hello";
 
+fn add(x: Int, y: Int): Int{
+    return x + y;
+};
+
+fn sub(x: Int, y: Int): Int{
+    return x - y;
+};
+
+fn mul(x: Int, y: Int): Int{
+    return x * y;
+};
+
+fn div(x: Int, y: Int): Int{
+    return x / y;
+};
+
 fn main(args: Int): Int{
     printf(hello);
+    printf("%d", mul(5, sub(6, 2));
     return 0;
 };
