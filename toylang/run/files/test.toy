@@ -1,3 +1,5 @@
+let hello = "Hello";
+
 fn add(x: Int, y: Int): Int{
     return x + y;
 };
@@ -14,12 +16,8 @@ fn div(x: Int, y: Int): Int{
     return x / y;
 };
 
-fn average(x: Int, y: Int, z: Int): Int{
-    let sum = add(x, add(y, z));
-    return div(sum, 3);
-};
-
 fn main(args: Int): Int{
-    print("Hello");
-    print(average(5, 3, 4));
+    printf(hello);
+    printf("%d", mul(5, sub(6, 2));
+    return 0;
 };

@@ -22,8 +22,8 @@ sealed class Type(val llvmType: LLVMTypeRef){
         Other Type
      */
     class VoidType(): Type(LLVM.LLVMVoidType())
-    open class ArrayType(arrayType: Type, val arrayCount: Int): Type(LLVM.LLVMArrayType(arrayType.llvmType, arrayCount)){
-        val elementPtrType: Type = Type.PointerType(arrayType)
+    open class ArrayType(arrayType: Type, arrayCount: Int): Type(LLVM.LLVMArrayType(arrayType.llvmType, arrayCount)){
+        val elementPtrType: Type = PointerType(arrayType)
     }
     class VectorType(vectorType: Type, arrayCount: Int): Type(LLVM.LLVMVectorType(vectorType.llvmType, arrayCount))
     open class PointerType(val type: Type): Type(LLVM.LLVMPointerType(type.llvmType, 0))

@@ -10,6 +10,7 @@ class Module(name: String){
     val module = LLVM.LLVMModuleCreateWithName(name)
     val globalVariables = arrayListOf<Variable.NamedVariable.GlobalVariable>()
     val functions = arrayListOf<Function>()
+    var targetTriple: TargetTriple = TargetTriple.default
 
     fun getGlobalReference(name: String): Variable?{
         if(this.globalVariables.find{ it.name == name } == null) return null
@@ -25,6 +26,9 @@ class Module(name: String){
     }
 
     fun findFunction(name: String): Function? = this.functions.find { it.name == name }
+    fun build(){
+        LLVM.LLVMSetTarget(module, targetTriple.triple)
+    }
 }
 
 inline fun buildModule(name: String, block: Module.()->Unit): Module{
@@ -37,6 +41,7 @@ inline fun buildModule(name: String, block: Module.()->Unit): Module{
         }
     }
     module.block()
+    module.build()
     return module
 }
 

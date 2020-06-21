@@ -3,6 +3,8 @@ package com.couch.kotlinx.llvm
 import org.bytedeco.javacpp.PointerPointer
 import org.bytedeco.llvm.LLVM.LLVMValueRef
 import org.bytedeco.llvm.global.LLVM
+import org.bytedeco.llvm.global.LLVM.LLVMConstInt
+import org.bytedeco.llvm.global.LLVM.LLVMInt32Type
 
 class BinaryArithInstruction{
     var left: Value = NoneValue
@@ -126,17 +128,40 @@ fun Builder.buildFDivide(name: String, block: BinaryArithInstruction.()->Unit): 
     }
 }
 
-inline fun Builder.buildGetElementPointer(tempVarName: String, block: ()->Value): Value{
-    val value = block()
-    require(value.type is Type.ArrayType){
-        "Variable is not an array type"
+/*
+    AGGREGATE INSTRUCTIONS
+ */
+
+//inline fun Builder.buildExtractValue(tempVarName: String, block: ()->Value): Value{
+//    val value = block()
+//    require(value.type is Type.VectorType){
+//        "Variable is not a vector type"
+//    }
+//    val instrs = arrayListOf(LLVM.LLVMConstInt(LLVM.LLVMInt32Type(), 0, 0))
+//    val extract = LLVM.LLVMBuildExtractElement()
+//}
+
+class GEPInstructionBuilder(private val builder: Builder, private val tempVarName: String){
+    private val indices = arrayListOf<Value>()
+    fun index(index: Value){
+        indices += index
     }
-    val instrs = arrayListOf(LLVM.LLVMConstInt(LLVM.LLVMInt32Type(), 0, 0))
-    val elementPtr = LLVM.LLVMBuildGEP(builder, block().value, PointerPointer(*instrs.toTypedArray()), 1, "${tempVarName}_ref")
-    return createReferenceValue(object : Value{
-        override val type: Type = value.type
-        override val value: LLVMValueRef = elementPtr
-    })
+
+    fun build(value: Value): Value{
+        val indices = indices.map{ it.value }
+        val elementPtr = LLVM.LLVMBuildGEP(builder.builder, value.value, PointerPointer(*indices.toTypedArray()), 1, "${tempVarName}_ref")
+        return object : Value{
+            override val type: Type = value.type
+            override val value: LLVMValueRef = elementPtr
+        }
+    }
+}
+
+fun Builder.buildGetElementPointer(tempVarName: String, value: Value, block: GEPInstructionBuilder.()->Unit): Value{
+    val gepBuilder = GEPInstructionBuilder(this, tempVarName)
+    gepBuilder.block()
+    val thing = gepBuilder.build(value)
+    return createReferenceValue(thing)
 }
 
 inline fun Builder.buildFunctionCall(name: String, function: Function, block: Builder.()->Array<Value>): Value{
