@@ -13,13 +13,7 @@ fun main(){
 
         val printf = findFunction("printf") ?: throw IllegalStateException("Attempted to get printf function but couldn't find it.")
 
-        val testStruct = createStruct("testStruct", arrayOf(Type.Int32Type(), Type.Int8Type()))
-        val testStructConstant = createGlobalVariable("testStructConst", testStruct){
-            initStruct(testStruct){
-                field(createInt32Value(10))
-                field(createInt32Value(15))
-            }
-        }
+        val testStructType = createStruct("testStruct", arrayOf(Type.Int32Type(), Type.Int8Type()))
 
         val add = createFunction("add"){
             returnType = Type.Int32Type()
@@ -120,11 +114,16 @@ fun main(){
                     buildFunctionCall("numPrint1", printf){
                         arrayOf(gepDPrintCast, buildLoad(gepIndex1, "index1"))
                     }
-                    val testStructGlobal = getGlobalReference(testStructConstant.name) ?: throw IllegalStateException("Could not find test struct")
-                    val gepStructIndex1 = buildStructFieldAccessor("testStructIndex1", testStructGlobal.value ?: throw IllegalStateException("Could not find test struct"), 1)
+                    val testStruct = createLocalVariable("testStruct"){
+                        initStruct(testStructType){
+                            field(createInt8Value(10))
+                            field(createInt32Value(15))
+                        }
+                    }
+                    val gepStructIndex1 = buildStructFieldAccessor("testStructIndex1", testStruct.value, 1)
                     val structIndex1 = buildLoad(gepStructIndex1, "structIndex1")
                     buildFunctionCall("structFieldPrint1", printf){
-                        arrayOf(gepDPrintCast, buildLoad(structIndex1, "field1"))
+                        arrayOf(gepDPrintCast, structIndex1)
                     }
                     addReturnStatement {
                         createInt32Value(0)
