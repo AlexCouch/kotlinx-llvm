@@ -43,9 +43,9 @@ test_block_1:
   %numArray_ptr_ref = getelementptr [4 x i32], [4 x i32]* %numArray, i32 0, i32 2
   %index1 = load i32, i32* %numArray_ptr_ref
   %numPrint1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @dPrint, i32 0, i32 0), i32 %index1)
-  %testStruct = alloca %testStruct
-  store %testStruct { i8 10, i32 15 }, %testStruct* %testStruct
-  %testStructIndex1 = getelementptr inbounds %testStruct, %testStruct* %testStruct, i32 0, i32 1
+  %testStructLocal = alloca %testStruct
+  store %testStruct { i32 15, i8 10 }, %testStruct* %testStructLocal
+  %testStructIndex1 = getelementptr inbounds %testStruct, %testStruct* %testStructLocal, i32 0, i32 1
   %structIndex1 = load i8, i8* %testStructIndex1
   %structFieldPrint1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @dPrint, i32 0, i32 0), i8 %structIndex1)
   ret i32 0

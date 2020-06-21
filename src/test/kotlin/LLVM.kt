@@ -114,10 +114,10 @@ fun main(){
                     buildFunctionCall("numPrint1", printf){
                         arrayOf(gepDPrintCast, buildLoad(gepIndex1, "index1"))
                     }
-                    val testStruct = createLocalVariable("testStruct"){
+                    val testStruct = createLocalVariable("testStructLocal"){
                         initStruct(testStructType){
-                            field(createInt8Value(10))
                             field(createInt32Value(15))
+                            field(createInt8Value(10))
                         }
                     }
                     val gepStructIndex1 = buildStructFieldAccessor("testStructIndex1", testStruct.value, 1)
