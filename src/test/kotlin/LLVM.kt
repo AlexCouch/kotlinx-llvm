@@ -135,6 +135,7 @@ fun main(){
         }
     }
     val error = BytePointer()
+    LLVM.LLVMPrintModuleToFile(module.module, "test.ll", error)
     val status = LLVM.LLVMVerifyModule(module.module, LLVM.LLVMPrintMessageAction, error)
     println("Verified module")
     println(status)
