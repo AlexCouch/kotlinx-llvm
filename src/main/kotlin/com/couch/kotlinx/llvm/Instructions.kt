@@ -141,7 +141,7 @@ fun Builder.buildFDivide(name: String, block: BinaryArithInstruction.()->Unit): 
 //    val extract = LLVM.LLVMBuildExtractElement()
 //}
 
-class GEPInstructionBuilder(private val builder: Builder, private val tempVarName: String){
+class GEPInstructionBuilder(private val builder: Builder, private val tempVarName: String, private val type: Type?){
     private val indices = arrayListOf<Value>()
     fun index(index: Value){
         indices += index
@@ -149,7 +149,7 @@ class GEPInstructionBuilder(private val builder: Builder, private val tempVarNam
 
     fun build(value: Value): Value{
         val indices = indices.map{ it.value }
-        val elementPtr = LLVM.LLVMBuildGEP(builder.builder, value.value, PointerPointer(*indices.toTypedArray()), 1, "${tempVarName}_ref")
+        val elementPtr = LLVM.LLVMBuildGEP(builder.builder, value.value, PointerPointer(*indices.toTypedArray()), indices.size, "${tempVarName}_ref")
         return object : Value{
             override val type: Type = value.type
             override val value: LLVMValueRef = elementPtr
@@ -157,8 +157,16 @@ class GEPInstructionBuilder(private val builder: Builder, private val tempVarNam
     }
 }
 
-fun Builder.buildGetElementPointer(tempVarName: String, value: Value, block: GEPInstructionBuilder.()->Unit): Value{
-    val gepBuilder = GEPInstructionBuilder(this, tempVarName)
+fun Builder.buildStructFieldAccessor(varName: String, value: Value, index: Int): Value{
+    val gep = LLVM.LLVMBuildStructGEP(builder, value.value, index, varName)
+    return object : Value{
+        override val type: Type = value.type
+        override val value: LLVMValueRef = gep
+    }
+}
+
+fun Builder.buildGetElementPointer(tempVarName: String, value: Value, type: Type? = null, block: GEPInstructionBuilder.()->Unit): Value{
+    val gepBuilder = GEPInstructionBuilder(this, tempVarName, type)
     gepBuilder.block()
     val thing = gepBuilder.build(value)
     return createReferenceValue(thing)

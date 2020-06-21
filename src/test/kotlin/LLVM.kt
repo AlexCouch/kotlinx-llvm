@@ -13,6 +13,14 @@ fun main(){
 
         val printf = findFunction("printf") ?: throw IllegalStateException("Attempted to get printf function but couldn't find it.")
 
+        val testStruct = createStruct("testStruct", arrayOf(Type.Int32Type(), Type.Int8Type()))
+        val testStructConstant = createGlobalVariable("testStructConst", testStruct){
+            initStruct(testStruct){
+                field(createInt32Value(10))
+                field(createInt32Value(15))
+            }
+        }
+
         val add = createFunction("add"){
             returnType = Type.Int32Type()
             createFunctionParam("x"){
@@ -46,7 +54,7 @@ fun main(){
             }
             addBlock("entry"){
                 startBuilder {
-                    val addResult = createLocalVariable("addResult", Type.Int32Type()){
+                    val addResult = createLocalVariable("addResult"){
                         buildAdditionInstruction("addVar"){
                             left = function.getParamByName("x")
                             right = buildAdditionInstruction("rightAddVar"){
@@ -69,40 +77,54 @@ fun main(){
             returnType = Type.Int32Type()
             addBlock("test_block_1"){
                 startBuilder {
-                    val message = getGlobalReference(decimalPrintStr.name)?.value ?: decimalPrintStr.value
-                    val gep = buildGetElementPointer("messageGEP", message){
+                    val dmessage = getGlobalReference(decimalPrintStr.name)?.value ?: decimalPrintStr.value
+                    val gep = buildGetElementPointer("messageGEP", dmessage){
                         index(createInt32Value(0))
                     }
-                    val addVar = createLocalVariable("addCallRes", Type.Int32Type()){
+                    val addVar = createLocalVariable("addCallRes"){
                         buildFunctionCall("addFuncCall", add){
                             arrayOf(createInt32Value(10), globalVar.value)
                         }
                     }
-                    val calcAvVar = createLocalVariable("calcAvCallRes", Type.Int32Type()){
+                    val calcAvVar = createLocalVariable("calcAvCallRes"){
                         buildFunctionCall("calcAvFuncCall", calcAverage){
                             arrayOf(createInt32Value(10), createInt32Value(8), globalVar.value)
                         }
                     }
                     val gepCast = buildBitcast(gep, Type.PointerType(Type.Int8Type()), "gepCast")
-//                    LLVM.LLVMBuildCall(this.builder, printfFunc, PointerPointer(*arrayOf(gepCast.value, add.value.value)), 2, "call")
-                    val call1 = buildFunctionCall("call", printf){
+                    buildFunctionCall("call", printf){
                         val addValue = buildLoad(addVar.value, "")
                         arrayOf(gepCast, addValue)
                     }
 
-                    val gepDPrint = buildGetElementPointer("decimalPrint_gep", message){
-                        index(createInt32Value(1))
+                    val gepDPrint = buildGetElementPointer("decimalPrint_gep", dmessage){
+                        index(createInt32Value(0))
                     }
                     val gepDPrintCast = buildBitcast(gepDPrint, Type.PointerType(Type.Int8Type()), "decimalPrint_cast")
-                    buildFunctionCall("printf2", printf){
-                        arrayOf(gepDPrintCast, call1)
-                    }
-                    val call2 = buildFunctionCall("call", printf){
+                    buildFunctionCall("call", printf){
                         val addValue = buildLoad(calcAvVar.value, "")
                         arrayOf(gepCast, addValue)
                     }
-                    buildFunctionCall("printf3", printf){
-                        arrayOf(gepDPrintCast, call2)
+                    val numArray = createLocalVariable("numArray"){
+                        createArray(arrayOf(
+                                createInt32Value(5),
+                                createInt32Value(10),
+                                createInt32Value(15),
+                                createInt32Value(20)
+                        ), Type.Int32Type())
+                    }
+                    val gepIndex1 = buildGetElementPointer("numArray_ptr", numArray.value, Type.Int32Type()){
+                        index(createInt32Value(0))
+                        index(createInt32Value(2))
+                    }
+                    buildFunctionCall("numPrint1", printf){
+                        arrayOf(gepDPrintCast, buildLoad(gepIndex1, "index1"))
+                    }
+                    val testStructGlobal = getGlobalReference(testStructConstant.name) ?: throw IllegalStateException("Could not find test struct")
+                    val gepStructIndex1 = buildStructFieldAccessor("testStructIndex1", testStructGlobal.value ?: throw IllegalStateException("Could not find test struct"), 1)
+                    val structIndex1 = buildLoad(gepStructIndex1, "structIndex1")
+                    buildFunctionCall("structFieldPrint1", printf){
+                        arrayOf(gepDPrintCast, buildLoad(structIndex1, "field1"))
                     }
                     addReturnStatement {
                         createInt32Value(0)
@@ -114,7 +136,7 @@ fun main(){
         }
     }
     val error = BytePointer()
-    val status = LLVM.LLVMVerifyModule(module.module, LLVM.LLVMAbortProcessAction, error)
+    val status = LLVM.LLVMVerifyModule(module.module, LLVM.LLVMPrintMessageAction, error)
     println("Verified module")
     println(status)
     LLVM.LLVMDisposeMessage(error)

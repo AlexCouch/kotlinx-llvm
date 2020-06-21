@@ -1,5 +1,6 @@
 package com.couch.kotlinx.llvm
 
+import org.bytedeco.javacpp.PointerPointer
 import org.bytedeco.llvm.LLVM.LLVMTypeRef
 import org.bytedeco.llvm.global.LLVM
 
@@ -22,10 +23,9 @@ sealed class Type(val llvmType: LLVMTypeRef){
         Other Type
      */
     class VoidType(): Type(LLVM.LLVMVoidType())
-    open class ArrayType(arrayType: Type, arrayCount: Int): Type(LLVM.LLVMArrayType(arrayType.llvmType, arrayCount)){
-        val elementPtrType: Type = PointerType(arrayType)
-    }
+    open class ArrayType(arrayType: Type, arrayCount: Int): Type(LLVM.LLVMArrayType(arrayType.llvmType, arrayCount))
     class VectorType(vectorType: Type, arrayCount: Int): Type(LLVM.LLVMVectorType(vectorType.llvmType, arrayCount))
+    class StructType(val fields: Array<Type>, val packed: Boolean = false, typeRef: LLVMTypeRef): Type(typeRef)
     open class PointerType(val type: Type): Type(LLVM.LLVMPointerType(type.llvmType, 0))
     class ReferenceType(variable: Variable): Type(variable.type.llvmType)
     class StringType: PointerType(Int8Type())

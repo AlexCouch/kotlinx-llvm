@@ -66,6 +66,39 @@ fun createReferenceValue(valueToReference: Value) = object : Value{
     override val value: LLVMValueRef = valueToReference.value
 }
 
+fun createArray(content: Array<Value>, type: Type) = object : Value{
+    override val type: Type = Type.ArrayType(type, content.size)
+    override val value: LLVMValueRef = LLVM.LLVMConstArray(type.llvmType, PointerPointer(*content.map { it.value }.toTypedArray()), content.size)
+}
+
+class StructBuilder(private val stype: Type){
+    private val fields = arrayListOf<Value>()
+    fun field(field: Value){
+        fields += field
+    }
+
+    fun build(): Value{
+        val struct = LLVM.LLVMConstNamedStruct(stype.llvmType, PointerPointer(*fields.map { it.value }.toTypedArray()), fields.size)
+        return object : Value{
+            override val type: Type = stype
+            override val value: LLVMValueRef = struct
+        }
+    }
+}
+
+fun createStruct(name: String, fields: Array<Type>, packed: Boolean = false): Type.StructType{
+    //PointerPointer(*fields.map { it.llvmType }.toTypedArray()), fields.size, if(packed) 1 else 0
+    val struct = LLVM.LLVMStructCreateNamed(LLVM.LLVMGetGlobalContext(), name)
+    LLVM.LLVMStructSetBody(struct, PointerPointer(*fields.map { it.llvmType }.toTypedArray()), fields.size, if(packed) 1 else 0)
+    return Type.StructType(fields, packed, struct)
+}
+
+fun initStruct(structType: Type.StructType, block: StructBuilder.()->Unit): Value{
+    val structBuilder = StructBuilder(structType)
+    structBuilder.block()
+    return structBuilder.build()
+}
+
 object NoneValue: Value{
     override val type: Type = Type.Int8Type()
     override val value: LLVMValueRef = LLVM.LLVMConstNull(type.llvmType)
